@@ -29,7 +29,7 @@ const message = "hello"
 const randomStringEntropyBytes = 32
 
 var (
-	baseURL = flag.String("baseURL", "https://127.0.0.1:4443", "A PEM eoncoded certificate file.")
+	baseURL = flag.String("baseURL", "https://127.0.0.1:4443", "The demo server base URL")
 )
 
 type challengeResponseData struct {
@@ -182,6 +182,7 @@ func loginUsingAgent(client *http.Client,
 }
 
 func main() {
+	flag.Parse()
 	log.SetFlags(log.Lshortfile)
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
