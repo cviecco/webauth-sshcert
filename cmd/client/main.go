@@ -6,23 +6,31 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/net/publicsuffix"
 )
 
-const baseURL = "https://127.0.0.1:4443"
+//const baseURL = "https://127.0.0.1:4443"
 
 const message = "hello"
 const randomStringEntropyBytes = 32
+
+var (
+	baseURL = flag.String("baseURL", "https://127.0.0.1:4443", "A PEM eoncoded certificate file.")
+)
 
 type challengeResponseData struct {
 	Nonce2 string `json:"nonce2"`
@@ -41,7 +49,29 @@ func genRandomString() (string, error) {
 func getNewCert(principals []string,
 	client *http.Client,
 	agentClient agent.ExtendedAgent,
-	//sshCert *ssh.Certificate,
+	key *agent.Key) error {
+	err := loginUsingAgent(client, agentClient, key)
+	if err != nil {
+		return err
+	}
+
+	res, err := client.Get(*baseURL + "/genToken")
+	if err != nil {
+		log.Println(err)
+	}
+	//log.Printf("res=%+v", res)
+	robots, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%s", robots)
+
+	return nil
+
+}
+func loginUsingAgent(client *http.Client,
+	agentClient agent.ExtendedAgent,
 	key *agent.Key) error {
 	pubKey, err := ssh.ParsePublicKey(key.Marshal())
 	if err != nil {
@@ -62,7 +92,7 @@ func getNewCert(principals []string,
 		return err
 	}
 	values := url.Values{"sshCert": {key.String()}, "nonce1": {nonce1}}
-	req, err := http.NewRequest("POST", baseURL+"/getChallenge", strings.NewReader(values.Encode()))
+	req, err := http.NewRequest("POST", *baseURL+"/getChallenge", strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
@@ -110,7 +140,7 @@ func getNewCert(principals []string,
 		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
 	}
 
-	req2, err := http.NewRequest("POST", baseURL+"/loginWithChallenge", strings.NewReader(values2.Encode()))
+	req2, err := http.NewRequest("POST", *baseURL+"/loginWithChallenge", strings.NewReader(values2.Encode()))
 	if err != nil {
 		return err
 	}
@@ -122,22 +152,30 @@ func getNewCert(principals []string,
 	}
 	defer resp2.Body.Close()
 
-	// verify
-	err = pubKey.Verify(hash[:], signature)
+	_, err = ioutil.ReadAll(resp2.Body)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
-	signature2 := &ssh.Signature{
-		Format: signature.Format,
-		Blob:   signature.Blob,
+	if resp2.StatusCode >= 300 {
+		return fmt.Errorf("bad status response=%d", resp.StatusCode)
 	}
-	err = pubKey.Verify(hash[:], signature2)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
+	/*
+		// verify
+		err = pubKey.Verify(hash[:], signature)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		signature2 := &ssh.Signature{
+			Format: signature.Format,
+			Blob:   signature.Blob,
+		}
+		err = pubKey.Verify(hash[:], signature2)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	*/
 	log.Printf("Success")
 
 	return nil
@@ -148,19 +186,24 @@ func main() {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
-	res, err := client.Get(baseURL + "/hello")
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
-		log.Println(err)
+		log.Fatalf("err=%s", err)
 	}
-	log.Printf("res=%+v", res)
-	robots, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%s", robots)
-
+	client := &http.Client{Transport: tr, Jar: jar, Timeout: 25 * time.Second}
+	/*
+		res, err := client.Get(baseURL + "/hello")
+		if err != nil {
+			log.Println(err)
+		}
+		log.Printf("res=%+v", res)
+		robots, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("%s", robots)
+	*/
 	socket := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", socket)
 	if err != nil {
