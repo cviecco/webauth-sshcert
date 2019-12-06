@@ -8,6 +8,7 @@ import (
 	//"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -38,6 +39,7 @@ var (
 	pendingChallenges = make(map[string]pendingChallangeData)
 	authCookie        = make(map[string]AuthCookieStruct)
 	cookieMutex       sync.Mutex
+	listenAddr        = flag.String("addr", "127.0.0.1:4443", "listening Address")
 )
 
 const authCookieName = "demo-auth-cookie"
@@ -279,13 +281,14 @@ func HelloServer(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	flag.Parse()
 	log.SetFlags(log.Lshortfile)
 
 	http.HandleFunc("/hello", HelloServer)
 	http.HandleFunc("/genToken", genTokenHandler)
 	http.HandleFunc("/getChallenge", CreateChallengeHandler)
 	http.HandleFunc("/loginWithChallenge", LoginWithChallengeHandler)
-	err := http.ListenAndServeTLS("127.0.0.1:4443", "server.crt", "server.key", nil)
+	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
