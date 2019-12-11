@@ -1,2 +1,2 @@
-# ssh-cert-exchanger
-Demo for a signer for ssh certs based on other ssh certs
+# webauth ssh-cert
+Demo/Design for webauth using  for ssh certs using the ssh agent.
