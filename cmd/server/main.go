@@ -93,7 +93,7 @@ func (s *Server) getRemoteUserName(w http.ResponseWriter, r *http.Request) (stri
 	return authInfo.Username, nil
 }
 
-func (s *Server) genTokenHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) echoIdentityHandler(w http.ResponseWriter, r *http.Request) {
 	authUser, err := s.getRemoteUserName(w, r)
 	if err != nil {
 		log.Printf("failure getting username")
@@ -139,7 +139,7 @@ func main() {
 		authCookie:    make(map[string]AuthCookieStruct),
 	}
 
-	http.HandleFunc("/genToken", server.genTokenHandler)
+	http.HandleFunc("/echoIdentity", server.echoIdentityHandler)
 	http.HandleFunc("/getChallenge", server.CreateChallengeHandler)
 	http.HandleFunc("/loginWithChallenge", server.LoginWithChallengeHandler)
 	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", nil)
