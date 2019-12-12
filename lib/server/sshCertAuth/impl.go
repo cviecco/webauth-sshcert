@@ -129,6 +129,14 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	log.Printf("Challenge Created")
 	return nil
 }
+func (a *Authenticator) verifyHostname(hostname string) (bool, error) {
+	for _, configuredHostname := range a.hostnames {
+		if hostname == configuredHostname {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, error) {
 	switch r.Method {
@@ -145,13 +153,27 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 		//return
 		return "", "", err
 	}
-	encodedNonce2 := r.Form.Get("nonce2")
+	encodedNonce2 := r.Form.Get("challenge")
 	if encodedNonce2 == "" {
-		return "", "Missing parameter nonce2", fmt.Errorf("Missing parameter nonce1")
+		return "", "Missing parameter challenge", fmt.Errorf("Missing parameter challenge")
 
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
 	log.Printf("nonce2=%s", encodedNonce2)
+	hostname := r.Form.Get("hostname")
+	if hostname == "" {
+		return "", "Missing parameter hostname", fmt.Errorf("Missing parameter hostname")
+
+	}
+	// TODO: validate nonce1 is actually a valid base64 value
+	log.Printf("hostname=%s", hostname)
+	valid, err := a.verifyHostname(hostname)
+	if err != nil {
+		return "", "", err
+	}
+	if !valid {
+		return "", "Invalid hostname", fmt.Errorf("Invalid hostname")
+	}
 
 	signatureFormat := r.Form.Get("signatureFormat")
 	if signatureFormat == "" {
@@ -161,7 +183,6 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 	}
 	// TODO: validate the signature format is sane
 	log.Printf("signatureFormat=%s", signatureFormat)
-
 	encodedSignatureBlob := r.Form.Get("signatureBlob")
 	if encodedSignatureBlob == "" {
 		//http.Error(w, "", http.StatusBadRequest)
@@ -174,6 +195,7 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 		//return
 		return "", "Missing bad signature Format", err
 	}
+
 	challengeData, ok := a.pendingChallenges[encodedNonce2]
 	if !ok {
 		log.Printf("challenge not found")

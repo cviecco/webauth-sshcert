@@ -17,7 +17,7 @@ const message = "hello"
 const randomStringEntropyBytes = 32
 
 var (
-	baseURL = flag.String("baseURL", "https://127.0.0.1:4443", "The demo server base URL")
+	baseURL = flag.String("baseURL", "https://localhost:4443", "The demo server base URL")
 )
 
 func main() {

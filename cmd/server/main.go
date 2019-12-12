@@ -114,6 +114,7 @@ func (s *Server) CreateChallengeHandler(w http.ResponseWriter, r *http.Request) 
 func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Request) {
 	authUser, userErrString, err := s.authenticator.LoginWithChallenge(r)
 	if err != nil {
+		log.Printf("error=%s", err)
 		errorCode := http.StatusBadRequest
 		if userErrString == "" {
 			errorCode = http.StatusInternalServerError

@@ -104,8 +104,8 @@ func (s *SSHAuthenticator) loginWithCertAndAgent(
 	//
 	values2 := url.Values{
 		"nonce1":          {nonce1},
-		"nonce2":          {newChallenge.Challenge},
-		"hostname":        s.baseURL.Hostname(),
+		"challenge":       {newChallenge.Challenge},
+		"hostname":        {s.baseURL.Hostname()},
 		"signatureFormat": {signature.Format},
 		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
 	}
@@ -122,12 +122,12 @@ func (s *SSHAuthenticator) loginWithCertAndAgent(
 	}
 	defer resp2.Body.Close()
 
-	_, err = ioutil.ReadAll(resp2.Body)
+	responseBytes, err := ioutil.ReadAll(resp2.Body)
 	if err != nil {
 		return err
 	}
 	if resp2.StatusCode >= 300 {
-		return fmt.Errorf("bad status response=%d", resp.StatusCode)
+		return fmt.Errorf("bad status response=%d, data=%s", resp2.StatusCode, string(responseBytes))
 	}
 	s.loggerPrintf(1, "Login Success")
 
@@ -145,6 +145,7 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 	agentClient := agent.NewClient(conn)
 	keyList, err := agentClient.List()
 
+	var lastErr error
 	for _, key := range keyList {
 		//log.Printf("key=%+v, FORMAT=%s", key, key.Format)
 		pubKey, err := ssh.ParsePublicKey(key.Marshal())
@@ -158,13 +159,13 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 			continue
 		}
 		s.loggerPrintf(2, "cert=%s", key.String())
-		err = s.loginWithCertAndAgent(agentClient, key)
-		if err != nil {
+		lastErr = s.loginWithCertAndAgent(agentClient, key)
+		if lastErr != nil {
 			log.Printf("Error using cert %s", key.String())
 			continue
 		}
 		return nil
 
 	}
-	return fmt.Errorf("Could not login")
+	return fmt.Errorf("Could not login, last err=%s", lastErr)
 }
