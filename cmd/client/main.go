@@ -21,6 +21,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/net/publicsuffix"
+
+	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
 )
 
 //const baseURL = "https://127.0.0.1:4443"
@@ -32,9 +34,11 @@ var (
 	baseURL = flag.String("baseURL", "https://127.0.0.1:4443", "The demo server base URL")
 )
 
+/*
 type challengeResponseData struct {
 	Nonce2 string `json:"nonce2"`
 }
+*/
 
 func genRandomString() (string, error) {
 	size := randomStringEntropyBytes
@@ -115,7 +119,7 @@ func loginUsingAgent(client *http.Client,
 	}
 	//log.Println(string(data))
 
-	var newChallenge challengeResponseData
+	var newChallenge sshCertAuth.ChallengeResponseData
 	err = json.Unmarshal(data, &newChallenge)
 	if err != nil {
 		log.Fatal(err)
@@ -123,7 +127,7 @@ func loginUsingAgent(client *http.Client,
 
 	log.Printf("challenge=%+v", newChallenge)
 
-	hash := sha256.Sum256([]byte(nonce1 + newChallenge.Nonce2))
+	hash := sha256.Sum256([]byte(nonce1 + newChallenge.Challenge))
 	//sign
 	signature, err := agentClient.Sign(pubKey, hash[:])
 	if err != nil {
@@ -135,7 +139,7 @@ func loginUsingAgent(client *http.Client,
 	//
 	values2 := url.Values{
 		"nonce1":          {nonce1},
-		"nonce2":          {newChallenge.Nonce2},
+		"nonce2":          {newChallenge.Challenge},
 		"signatureFormat": {signature.Format},
 		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
 	}
@@ -159,23 +163,6 @@ func loginUsingAgent(client *http.Client,
 	if resp2.StatusCode >= 300 {
 		return fmt.Errorf("bad status response=%d", resp.StatusCode)
 	}
-	/*
-		// verify
-		err = pubKey.Verify(hash[:], signature)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		signature2 := &ssh.Signature{
-			Format: signature.Format,
-			Blob:   signature.Blob,
-		}
-		err = pubKey.Verify(hash[:], signature2)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-	*/
 	log.Printf("Success")
 
 	return nil

@@ -119,7 +119,7 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		Cert:   sshCert,
 	}
 	// TODO add mutex
-	a.pendingChallenges[encodedNonce1] = toStore
+	a.pendingChallenges[challenge] = toStore
 
 	returnData := ChallengeResponseData{
 		Challenge: challenge,
@@ -176,6 +176,7 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 	}
 	challengeData, ok := a.pendingChallenges[encodedNonce2]
 	if !ok {
+		log.Printf("challenge not found")
 		//http.Error(w, "", http.StatusBadRequest)
 		//return
 		return "", "Challenge not found/invalid", fmt.Errorf("Challenge Not Found")
