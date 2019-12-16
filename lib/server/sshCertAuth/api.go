@@ -2,6 +2,7 @@ package sshCertAuth
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -14,10 +15,11 @@ type pendingChallengeData struct {
 }
 
 type Authenticator struct {
-	hostnames         []string
-	pendingChallenges map[string]pendingChallengeData
-	caKeys            []string
-	dontCheckHostname bool
+	hostnames             []string
+	pendingChallenges     map[string]pendingChallengeData
+	pendingChallengeMutex sync.Mutex
+	caKeys                []string
+	dontCheckHostname     bool
 }
 
 type ChallengeResponseData struct {
@@ -38,6 +40,6 @@ func (a *Authenticator) CreateChallengeHandler(w http.ResponseWriter, r *http.Re
 
 }
 
-func (a *Authenticator) LoginWithChallenge(r *http.Request) (string, string, error) {
+func (a *Authenticator) LoginWithChallenge(r *http.Request) (string, time.Time, string, error) {
 	return a.loginWithChallenge(r)
 }

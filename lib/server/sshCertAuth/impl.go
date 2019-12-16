@@ -14,7 +14,7 @@ import (
 	//"net"
 	"net/http"
 	//"sync"
-	//"time"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -66,19 +66,18 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		return fmt.Errorf("Missing Parameter (Nonce1)")
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
-	log.Printf("nonce1=%s", encodedNonce1)
+	//log.Printf("nonce1=%s", encodedNonce1)
 
 	encodedSshCert := r.Form.Get("sshCert")
 	if encodedSshCert == "" {
 		http.Error(w, "", http.StatusBadRequest)
 		return fmt.Errorf("Missing Parameter (sshCert)")
 	}
-	log.Printf("sshCert=%s", encodedSshCert)
-
-	log.Printf("sshCert=%s", encodedSshCert)
+	//log.Printf("sshCert=%s", encodedSshCert)
 	// TODO: Validate inbound data cert (regexp + size)
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSshCert))
 	if err != nil {
+		log.Printf("sshCert=%s", encodedSshCert)
 		log.Println(err)
 		http.Error(w, "", http.StatusBadRequest)
 		return fmt.Errorf("Invalid Ssh Cert (not valid ssh)")
@@ -89,7 +88,7 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, "", http.StatusBadRequest)
 		return fmt.Errorf("This is a key, not a cert")
 	}
-	log.Printf("pubkey=%+v", sshCert)
+	//log.Printf("pubkey=%+v", sshCert)
 	// now we validate the cert
 	//verify the cert....
 	if len(sshCert.ValidPrincipals) != 1 {
@@ -118,15 +117,16 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		Nonce1: encodedNonce1,
 		Cert:   sshCert,
 	}
-	// TODO add mutex
+	a.pendingChallengeMutex.Lock()
 	a.pendingChallenges[challenge] = toStore
+	a.pendingChallengeMutex.Unlock()
 
 	returnData := ChallengeResponseData{
 		Challenge: challenge,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(returnData)
-	log.Printf("Challenge Created")
+	//log.Printf("Challenge Created")
 	return nil
 }
 func (a *Authenticator) verifyHostname(hostname string) (bool, error) {
@@ -138,12 +138,12 @@ func (a *Authenticator) verifyHostname(hostname string) (bool, error) {
 	return false, nil
 }
 
-func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, error) {
+func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, string, error) {
 	switch r.Method {
 	case "GET":
 	case "POST":
 	default:
-		return "", "Invalid Method", fmt.Errorf("method not allowed")
+		return "", time.Time{}, "Invalid Method", fmt.Errorf("method not allowed")
 	}
 	err := r.ParseForm()
 	if err != nil {
@@ -151,35 +151,35 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 		//state.writeFailureResponse(w, r, http.StatusBadRequest, "Error parsing form")
 		//http.Error(w, "", http.StatusBadRequest)
 		//return
-		return "", "", err
+		return "", time.Time{}, "", err
 	}
 	encodedNonce2 := r.Form.Get("challenge")
 	if encodedNonce2 == "" {
-		return "", "Missing parameter challenge", fmt.Errorf("Missing parameter challenge")
+		return "", time.Time{}, "Missing parameter challenge", fmt.Errorf("Missing parameter challenge")
 
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
 	log.Printf("nonce2=%s", encodedNonce2)
 	hostname := r.Form.Get("hostname")
 	if hostname == "" {
-		return "", "Missing parameter hostname", fmt.Errorf("Missing parameter hostname")
+		return "", time.Time{}, "Missing parameter hostname", fmt.Errorf("Missing parameter hostname")
 
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
 	log.Printf("hostname=%s", hostname)
 	valid, err := a.verifyHostname(hostname)
 	if err != nil {
-		return "", "", err
+		return "", time.Time{}, "", err
 	}
 	if !valid {
-		return "", "Invalid hostname", fmt.Errorf("Invalid hostname")
+		return "", time.Time{}, "Invalid hostname", fmt.Errorf("Invalid hostname")
 	}
 
 	signatureFormat := r.Form.Get("signatureFormat")
 	if signatureFormat == "" {
 		//http.Error(w, "", http.StatusBadRequest)
 		//return
-		return "", "Missing parameter signatureFormat", fmt.Errorf("Missing parameter signatureFormat")
+		return "", time.Time{}, "Missing parameter signatureFormat", fmt.Errorf("Missing parameter signatureFormat")
 	}
 	// TODO: validate the signature format is sane
 	log.Printf("signatureFormat=%s", signatureFormat)
@@ -187,22 +187,33 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 	if encodedSignatureBlob == "" {
 		//http.Error(w, "", http.StatusBadRequest)
 		//return
-		return "", "Missing parameter signatureBlob", fmt.Errorf("Missing parameter signatureBlob")
+		return "", time.Time{}, "Missing parameter signatureBlob", fmt.Errorf("Missing parameter signatureBlob")
 	}
 	signatureBlob, err := base64.URLEncoding.DecodeString(encodedSignatureBlob)
 	if err != nil {
 		//http.Error(w, "Invalid Signature Data", http.StatusBadRequest)
 		//return
-		return "", "Missing bad signature Format", err
+		return "", time.Time{}, "Missing bad signature Format", err
 	}
 
+	a.pendingChallengeMutex.Lock()
 	challengeData, ok := a.pendingChallenges[encodedNonce2]
+	a.pendingChallengeMutex.Unlock()
 	if !ok {
 		log.Printf("challenge not found")
 		//http.Error(w, "", http.StatusBadRequest)
 		//return
-		return "", "Challenge not found/invalid", fmt.Errorf("Challenge Not Found")
+		return "", time.Time{}, "Challenge not found/invalid", fmt.Errorf("Challenge Not Found")
 	}
+
+	if challengeData.Expiration.After(time.Now()) {
+		log.Printf("Expired Challenge")
+		a.pendingChallengeMutex.Lock()
+		delete(a.pendingChallenges, encodedNonce2)
+		a.pendingChallengeMutex.Unlock()
+		return "", time.Time{}, "Challenge expired", fmt.Errorf("Expired Challenge Found")
+	}
+
 	hash := sha256.Sum256([]byte(challengeData.Nonce1 + encodedNonce2))
 	signature2 := &ssh.Signature{
 		Format: signatureFormat,
@@ -212,11 +223,17 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, string, err
 	if err != nil {
 		log.Println(err)
 		//http.Error(w, "", http.StatusUnauthorized)
-		return "", "Unauthorized", fmt.Errorf("Invalid signature %s", err)
+		return "", time.Time{}, "Unauthorized", fmt.Errorf("Invalid signature %s", err)
 	}
 
 	//we have checked before this exists
 	authUser := challengeData.Cert.ValidPrincipals[0]
 
-	return authUser, "", nil
+	// TODO check for certificates too far away in the future
+	authExpiration := time.Unix(int64(challengeData.Cert.ValidBefore), 0)
+	maxAge := time.Now().Add(time.Duration(24) * time.Hour)
+	if authExpiration.After(maxAge) {
+		authExpiration = maxAge
+	}
+	return authUser, authExpiration, "", nil
 }

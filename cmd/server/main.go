@@ -51,13 +51,16 @@ func randomStringGeneration() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func (s *Server) setAndStoreAuthCookie(w http.ResponseWriter, username string) error {
+func (s *Server) setAndStoreAuthCookie(w http.ResponseWriter, username string, maxAge time.Time) error {
 	randomString, err := randomStringGeneration()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 	expires := time.Now().Add(time.Hour * cookieExpirationHours)
+	if expires.After(maxAge) {
+		expires = maxAge
+	}
 	userCookie := http.Cookie{Name: authCookieName, Value: randomString, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
 	http.SetCookie(w, &userCookie)
 	Cookieinfo := AuthCookieStruct{username, userCookie.Expires}
@@ -112,7 +115,7 @@ func (s *Server) CreateChallengeHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Request) {
-	authUser, userErrString, err := s.authenticator.LoginWithChallenge(r)
+	authUser, maxAge, userErrString, err := s.authenticator.LoginWithChallenge(r)
 	if err != nil {
 		log.Printf("error=%s", err)
 		errorCode := http.StatusBadRequest
@@ -122,7 +125,7 @@ func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, userErrString, errorCode)
 		return
 	}
-	err = s.setAndStoreAuthCookie(w, authUser)
+	err = s.setAndStoreAuthCookie(w, authUser, maxAge)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
