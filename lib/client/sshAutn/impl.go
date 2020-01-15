@@ -80,69 +80,11 @@ func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []s
 	return nonce1, newChallenge.Challenge, newChallenge.AllowedIssuerFingerprints, nil
 }
 
-func (s *SSHAuthenticator) loginWithCertAndAgent(
-	agentClient agent.ExtendedAgent,
-	key *agent.Key) error {
-
-	pubKey, err := ssh.ParsePublicKey(key.Marshal())
-	if err != nil {
-		return err
-	}
-	sshCert, ok := pubKey.(*ssh.Certificate)
-	if !ok {
-		log.Println("SSH public key is not a certificate")
-		fmt.Errorf("Not an SSH cert")
-	}
-	s.loggerPrintf(2, "cert=%+v", sshCert)
-
-	///// perform request
-	// Nonce should be a a base64 encoded random number (256 bytes?)
-	nonce1, err := genRandomString()
-	if err != nil {
-		return err
-	}
-	values := url.Values{"sshCert": {key.String()}, "nonce1": {nonce1}}
-	req, err := http.NewRequest("POST", s.rawBaseURL+s.getChallengePath, strings.NewReader(values.Encode()))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	//req.Header.Set("User-Agent", userAgentString)
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	//
-	// Dump response
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode >= 300 {
-		return fmt.Errorf("bad status response=%d", resp.StatusCode)
-	}
-	//log.Println(string(data))
-
-	var newChallenge sshCertAuth.ChallengeResponseData
-	err = json.Unmarshal(data, &newChallenge)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s.loggerPrintf(1, "challenge=%+v", newChallenge)
-
-	return s.doChallengerResponseCall(nonce1, newChallenge.Challenge, agentClient, key)
-
-}
-
 func (s *SSHAuthenticator) doChallengerResponseCall(
 	nonce1 string,
 	challenge string,
 	agentClient agent.ExtendedAgent,
-	key *agent.Key,
-) error {
+	key *agent.Key) error {
 	pubKey, err := ssh.ParsePublicKey(key.Marshal())
 	if err != nil {
 		return err
