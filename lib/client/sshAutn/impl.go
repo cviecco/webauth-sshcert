@@ -39,6 +39,47 @@ func (s *SSHAuthenticator) loggerPrintf(level uint, format string, v ...interfac
 	}
 }
 
+func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []string, error) {
+
+	// Nonce should be a a base64 encoded random number (256 bytes?)
+	nonce1, err := genRandomString()
+	if err != nil {
+		return "", "", nil, err
+	}
+	values := url.Values{"nonce1": {nonce1}}
+	req, err := http.NewRequest("POST", s.rawBaseURL+s.getChallengePath, strings.NewReader(values.Encode()))
+	if err != nil {
+		return "", "", nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	//req.Header.Set("User-Agent", userAgentString)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", "", nil, err
+	}
+	defer resp.Body.Close()
+
+	//
+	// Dump response
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", nil, err
+	}
+	if resp.StatusCode >= 300 {
+		return "", "", nil, fmt.Errorf("bad status response=%d", resp.StatusCode)
+	}
+	//log.Println(string(data))
+
+	var newChallenge sshCertAuth.ChallengeResponseData
+	err = json.Unmarshal(data, &newChallenge)
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	s.loggerPrintf(1, "challenge=%+v", newChallenge)
+	return nonce1, newChallenge.Challenge, newChallenge.AllowedIssuerFingerprints, nil
+}
+
 func (s *SSHAuthenticator) loginWithCertAndAgent(
 	agentClient agent.ExtendedAgent,
 	key *agent.Key) error {
@@ -92,7 +133,29 @@ func (s *SSHAuthenticator) loginWithCertAndAgent(
 
 	s.loggerPrintf(1, "challenge=%+v", newChallenge)
 
-	hash := sha256.Sum256([]byte(nonce1 + newChallenge.Challenge))
+	return s.doChallengerResponseCall(nonce1, newChallenge.Challenge, agentClient, key)
+
+}
+
+func (s *SSHAuthenticator) doChallengerResponseCall(
+	nonce1 string,
+	challenge string,
+	agentClient agent.ExtendedAgent,
+	key *agent.Key,
+) error {
+	pubKey, err := ssh.ParsePublicKey(key.Marshal())
+	if err != nil {
+		return err
+	}
+	//TODO: check for the key being  a cert here
+	sshCert, ok := pubKey.(*ssh.Certificate)
+	if !ok {
+		log.Println("SSH public key is not a certificate")
+		fmt.Errorf("Not an SSH cert")
+	}
+	s.loggerPrintf(2, "cert=%+v", sshCert)
+
+	hash := sha256.Sum256([]byte(nonce1 + challenge))
 	//sign
 	signature, err := agentClient.Sign(pubKey, hash[:])
 	if err != nil {
@@ -104,7 +167,8 @@ func (s *SSHAuthenticator) loginWithCertAndAgent(
 	//
 	values2 := url.Values{
 		"nonce1":          {nonce1},
-		"challenge":       {newChallenge.Challenge},
+		"sshCert":         {key.String()},
+		"challenge":       {challenge},
 		"hostname":        {s.baseURL.Hostname()},
 		"signatureFormat": {signature.Format},
 		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
@@ -144,6 +208,14 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 	}
 	agentClient := agent.NewClient(conn)
 	keyList, err := agentClient.List()
+	if err != nil {
+		return err
+	}
+	//now go remote
+	nonce1, challenge, issuerFingerprints, err := s.getChallengeNonceAndSignerList()
+	if err != nil {
+		return nil
+	}
 
 	var lastErr error
 	for _, key := range keyList {
@@ -153,13 +225,27 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 			log.Println(err)
 			continue
 		}
-		_, ok := pubKey.(*ssh.Certificate)
+		sshCert, ok := pubKey.(*ssh.Certificate)
 		if !ok {
 			s.loggerPrintf(1, "SSH public key is not a certificate")
 			continue
 		}
 		s.loggerPrintf(2, "cert=%s", key.String())
-		lastErr = s.loginWithCertAndAgent(agentClient, key)
+		issuerFP := sshCertAuth.FingerprintSHA256(sshCert.SignatureKey)
+		knownIssuer := false
+		for _, potentialSignerFP := range issuerFingerprints {
+			if issuerFP == potentialSignerFP {
+				knownIssuer = true
+			}
+		}
+		if !knownIssuer {
+			s.loggerPrintf(1, "Cert Issuer not trusted by remote, skipping")
+			lastErr = fmt.Errorf("No local cert trusted by remote service")
+			continue
+		}
+
+		//lastErr = s.loginWithCertAndAgent(agentClient, key)
+		lastErr = s.doChallengerResponseCall(nonce1, challenge, agentClient, key)
 		if lastErr != nil {
 			log.Printf("Error using cert %s", key.String())
 			continue

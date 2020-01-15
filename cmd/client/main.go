@@ -36,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("err=%s", err)
 	}
+	authenticator.LogLevel = 1
 	err = authenticator.DoLogin()
 	if err != nil {
 		log.Fatalf("err=%s", err)

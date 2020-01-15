@@ -14,6 +14,7 @@ import (
 	//"net"
 	"net/http"
 	//"sync"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -46,6 +47,61 @@ func (a *Authenticator) isUserAuthority(auth ssh.PublicKey) bool {
 	return false
 }
 
+// base64 sha256 hash with the trailing equal sign removed
+func fingerprintSHA256(key ssh.PublicKey) string {
+	hash := sha256.Sum256(key.Marshal())
+	b64hash := base64.StdEncoding.EncodeToString(hash[:])
+	return strings.TrimRight(b64hash, "=")
+}
+
+func (a *Authenticator) computeCAFingeprints() error {
+	a.caFingerPrints = make([]string, len(a.caKeys))
+	for i, signer := range a.caKeys {
+		sshCaPub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signer))
+		if err != nil {
+			return err
+		}
+		a.caFingerPrints[i] = FingerprintSHA256(sshCaPub)
+	}
+	return nil
+}
+
+func (a *Authenticator) validateSSHCertString(r *http.Request, encodedSshCert string) (*ssh.Certificate, string, error) {
+	if encodedSshCert == "" {
+		return nil, "Missing Parameter (sshCert)", fmt.Errorf("Missing Parameter (sshCert)")
+	}
+	//log.Printf("sshCert=%s", encodedSshCert)
+	// TODO: Validate inbound data cert (regexp + size)
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSshCert))
+	if err != nil {
+		log.Printf("sshCert=%s", encodedSshCert)
+		log.Println(err)
+		return nil, "Invalid SSH cert", fmt.Errorf("Invalid Ssh Cert (not valid ssh)")
+	}
+	sshCert, ok := pubKey.(*ssh.Certificate)
+	if !ok {
+		log.Printf("it is not a cert")
+		return nil, "This is a key not a cert", fmt.Errorf("This is a key, not a cert")
+	}
+	//log.Printf("pubkey=%+v", sshCert)
+	// now we validate the cert
+	//verify the cert....
+	if len(sshCert.ValidPrincipals) != 1 {
+		log.Printf("Too many principals in cert")
+		return nil, "Number of principals in cert != 1", fmt.Errorf("Number of principals in cert != 1")
+	}
+	principal := sshCert.ValidPrincipals[0]
+	certChecker := ssh.CertChecker{
+		IsUserAuthority: a.isUserAuthority,
+	}
+	err = certChecker.CheckCert(principal, sshCert)
+	if err != nil {
+		log.Printf("failt to checkCert err=%s", err)
+		return nil, "invalid or expired Cert", fmt.Errorf("Invalid or expired Cert: err=%s", err)
+	}
+	return sshCert, "", nil
+}
+
 func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
@@ -67,46 +123,14 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
 	//log.Printf("nonce1=%s", encodedNonce1)
-
-	encodedSshCert := r.Form.Get("sshCert")
-	if encodedSshCert == "" {
-		http.Error(w, "", http.StatusBadRequest)
-		return fmt.Errorf("Missing Parameter (sshCert)")
-	}
-	//log.Printf("sshCert=%s", encodedSshCert)
-	// TODO: Validate inbound data cert (regexp + size)
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSshCert))
-	if err != nil {
-		log.Printf("sshCert=%s", encodedSshCert)
-		log.Println(err)
-		http.Error(w, "", http.StatusBadRequest)
-		return fmt.Errorf("Invalid Ssh Cert (not valid ssh)")
-	}
-	sshCert, ok := pubKey.(*ssh.Certificate)
-	if !ok {
-		log.Printf("it is not a cert")
-		http.Error(w, "", http.StatusBadRequest)
-		return fmt.Errorf("This is a key, not a cert")
-	}
-	//log.Printf("pubkey=%+v", sshCert)
-	// now we validate the cert
-	//verify the cert....
-	if len(sshCert.ValidPrincipals) != 1 {
-		log.Printf("Too many principals in cert")
-		http.Error(w, "Cert has too many principals (or none)", http.StatusBadRequest)
-		return fmt.Errorf("Number of principals in cert != 1")
-	}
-	principal := sshCert.ValidPrincipals[0]
-
-	certChecker := ssh.CertChecker{
-		IsUserAuthority: a.isUserAuthority,
-	}
-	err = certChecker.CheckCert(principal, sshCert)
-	if err != nil {
-		log.Printf("failt to checkCert err=%s", err)
-		http.Error(w, "Invalid or expired Cert", http.StatusUnauthorized)
-		return fmt.Errorf("Invalid or expired Cert")
-	}
+	/*
+		encodedSshCert := r.Form.Get("sshCert")
+		_, userErrText, err := a.validateSSHCertString(r, encodedSshCert)
+		if err != nil {
+			http.Error(w, userErrText, http.StatusBadRequest)
+			return err
+		}
+	*/
 	///Now build response
 	challenge, err := randomStringGeneration()
 	if err != nil {
@@ -115,14 +139,15 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	}
 	toStore := pendingChallengeData{
 		Nonce1: encodedNonce1,
-		Cert:   sshCert,
+		//Cert:   sshCert,
 	}
 	a.pendingChallengeMutex.Lock()
 	a.pendingChallenges[challenge] = toStore
 	a.pendingChallengeMutex.Unlock()
 
 	returnData := ChallengeResponseData{
-		Challenge: challenge,
+		Challenge:                 challenge,
+		AllowedIssuerFingerprints: a.caFingerPrints,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(returnData)
@@ -196,6 +221,13 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Missing bad signature Format", err
 	}
 
+	encodedSshCert := r.Form.Get("sshCert")
+	sshCert, userErrText, err := a.validateSSHCertString(r, encodedSshCert)
+	if err != nil {
+		//http.Error(w, "", http.StatusBadRequest)
+		return "", time.Time{}, userErrText, err
+	}
+
 	a.pendingChallengeMutex.Lock()
 	challengeData, ok := a.pendingChallenges[encodedNonce2]
 	a.pendingChallengeMutex.Unlock()
@@ -219,7 +251,7 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		Format: signatureFormat,
 		Blob:   signatureBlob,
 	}
-	err = challengeData.Cert.Verify(hash[:], signature2)
+	err = sshCert.Verify(hash[:], signature2)
 	if err != nil {
 		log.Println(err)
 		//http.Error(w, "", http.StatusUnauthorized)
@@ -227,10 +259,10 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 	}
 
 	//we have checked before this exists
-	authUser := challengeData.Cert.ValidPrincipals[0]
+	authUser := sshCert.ValidPrincipals[0]
 
 	// TODO check for certificates too far away in the future
-	authExpiration := time.Unix(int64(challengeData.Cert.ValidBefore), 0)
+	authExpiration := time.Unix(int64(sshCert.ValidBefore), 0)
 	maxAge := time.Now().Add(time.Duration(24) * time.Hour)
 	if authExpiration.After(maxAge) {
 		authExpiration = maxAge
