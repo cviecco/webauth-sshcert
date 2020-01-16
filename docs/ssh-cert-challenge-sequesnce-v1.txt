@@ -1,0 +1,12 @@
+title Authentication Sequence (v1)
+participant userCli
+participant web-server
+note right of web-server: webserver obtains sshCA public keys
+note left of userCli: user obtains ssh cert from sshCA
+userCli->web-server: nonce1
+note right of web-server: verifies nonce1 is valid (size) \nGenerates Nonce2(challenge) and puts it in local \nmemory array (map[nonce2] {nonce1, expiration})
+web-server->userCli: challenge + list of Fingerprints\n of trusted CA
+note left of userCli: Client goes over its ssh\n certificates and selects one that is\n signed by a server trusted CA
+userCli-> web-server: Sha256(nonce1 | nonce2 | Hostname) \n + nonce2 + Hostname + ssh-cert
+note right of web-server: uses nonce2 to find parameters to recompute value\n \nverifies hostname\nverifies ssh-cert\nverifies challenge response signed by matching cert
+web-server -> userCli: authenticaing cookie \n(expires at cert expiration time)

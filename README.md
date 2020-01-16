@@ -6,9 +6,9 @@ The motivation is on having SSO for CLI utilities without the need of generating
 Right now it is a work in progress and no implications of its security are given.
 
 
-The VO of the procol is as Follows:
+The V1 of the procol is as Follows:
 
-![foo](docs/ssh-cert-challenge-sequesnce-v0.png)
+![protocol diagram](docs/ssh-cert-challenge-sequesnce-v1.png)
 
 Objectives:
 1. Avoid use of password
@@ -17,6 +17,11 @@ Objectives:
 4. Prevention of Replay attacks
 5. When using certificates no need to for external dependencies for checking auth (use the sshCA as trust anchor)
 6. Prevention of revealing of secrets from either the server or the client.
+7. Must be able to run error free for well behaved clients and servers (no probabilitic fails)
+
+OpenQuestions (v1):
+1. Currently we send back the full list of sha256 fingerprints of the trusted certs. This has the advantage of just being computed once, but has the disavantage that we are giving the complete fingerprint to an attacker.
+2. We send nonce1 on the first leg of the transmission, the goal is to be able to bind the two transactions. Is this even necesary?
 
 ### FAQ:
 #### Why not SSL certificates?
