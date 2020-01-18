@@ -13,10 +13,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/Cloud-Foundations/npipe"
 
 	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
 )
@@ -141,12 +144,19 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 
 }
 
-func (s *SSHAuthenticator) loginWithAgentSocket() error {
+func connectToDefaultSSHAgentLocation() (net.Conn, error) {
+	if runtime.GOOS == "windows" {
+		return npipe.Dial(`\\.\pipe\openssh-ssh-agent`)
+	}
+	// Here we assume that all other os support unix sockets
 	socket := os.Getenv("SSH_AUTH_SOCK")
-	// TODO: check on windows
-	conn, err := net.Dial("unix", socket)
+	return net.Dial("unix", socket)
+}
+
+func (s *SSHAuthenticator) loginWithAgentSocket() error {
+	conn, err := connectToDefaultSSHAgentLocation()
 	if err != nil {
-		return fmt.Errorf("LoginWithAgentSocket: Failed to open SSH_AUTH_SOCK: %v", err)
+		return fmt.Errorf("LoginWithAgentSocket: Failed to connect to agent Socket: %v", err)
 	}
 	agentClient := agent.NewClient(conn)
 	keyList, err := agentClient.List()
