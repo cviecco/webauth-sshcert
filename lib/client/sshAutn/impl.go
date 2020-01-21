@@ -166,7 +166,7 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 	//now go remote
 	nonce1, challenge, issuerFingerprints, err := s.getChallengeNonceAndSignerList()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	var lastErr error
