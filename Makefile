@@ -5,7 +5,6 @@ else
 GOPATH ?= $(HOME)/go
 endif
 
-
 all: build test
 
 build:
