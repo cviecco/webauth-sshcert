@@ -42,7 +42,39 @@ h12wHUZrzYUWojD0c7UbP8jJAACJkfREFhUQVdrY1xTvlD46Zd91NIE=
 -----END RSA PRIVATE KEY-----`
 
 // actual output SHA256:1sTu4EM0wYab///MibgBWdN20XNHAVc2v9ChbJNUWqc cviecco@XXXXXX
-const expectedFP = `1sTu4EM0wYab///MibgBWdN20XNHAVc2v9ChbJNUWqc`
+const testUserPrivateKeySHA256 = `1sTu4EM0wYab///MibgBWdN20XNHAVc2v9ChbJNUWqc`
+
+// and example signer
+const exampleSignerPub = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD6+x+wPjuKWM7A8aCZgGdiFXRZdpLRZk+KpvNBe9nXu9GHznWYrPIXWVCLl+yp6v30ldzRUiCzHnskV0R4Wzjxi2LCKlVIwpx2Z7gVk8XnZf/MAHdvklfHB2srpWsGUQNJhxCVeOFweJxhLSILkh6y+V0yZ8Zy3t2ALCrHAyOEYhz/RgHgmWMYvxzoSj5wnS16tY3Adt3sOu3DMRq45dIsKjN0bjSPjycL6TQGWvE9BK8HsioyEVCNItWbh4+4kfr4L32U6Sw9syvK4P29kvHnPbSoLssCKuWvtKaLjI9qKFj+sL3hlsZCU5kvHEPVWDudExW2wA8hm6S2wpIOqI/Ua/24Dhm7MKimeqXiOoO0wzPeh7IaKQfczy68Hmk2S8oubj8wIwjxZICbhL/cxl7ZD1EWY/LZH+g5bf98gvl0mC3gFWEVyA4ZZwNkzIlV1NZXibXkdsquJg24/+ZMMtMat/kqd8di9lzuoVRAOV9q80v7QFi25jHjKgXTJ7Av7mc="
+
+//
+const testIssuerPrivateKey = `-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAv+SQMn4FikGnxdzEpFAX2NfgkgRsgx/4vOhT14zmWLEuG6+l
+3T6xoW3iGGOdkw5+KG1UMaqhWV35Tk4PVBRre/Ijymo9y+MXSBZPiodnilOViwbv
+X8vtf0+nHbhAnSki0BrzWfFHyXelKxuLfCbq3iZasL3xgAuYJ/phcptrepQ7lV3z
+OhNB30jFBjojkBflCwUPJzVDWgBU6TL5oIRccyZzbrhMC7P7niyqYzm1t+Wx3uAc
+hWmRBi9KxZ7BmtVzhQvwLvYkprOS9PscGdiAL8iYtexgfdET5WXJuThWQpdxdGRY
+XQrv0zWDND4JR36yvA5jel5/6D+CQs1oIe+9EwIDAQABAoIBAAYRG938zgAJA1zm
+FfF79sUMTjVPnn6mzB5s2fm+oqm7MFH/w6azDLql1rgeriSwGJz+l+LaGi/RIMiw
+/xsRajSI+0izAzEnBN1qlykyDrv42ImEtpy4vdGAmy/9W02ct1UNBRSa5EIiXj52
+qHpMYLCVVdiwqKn7s9vPtrUA5O0DJLcQne3by/IoXZvkpHAWw5iFQM5rkCeN3SAC
+AaDVqvV/E39FNu8P4lMm0m5dbMwRpxAajaQurpS2Bu2VFf+hmjsc3siwAI4Ampfx
+wrJCq6uSv2qWjkPdZpjEQY30dO9qXO8Hn6gEk37LDtzEv2Y0tAhbDT1y3tDcaM/k
+KQW4k8ECgYEA6K2hPEztRqH6joShn7Mtym0pdKe+5TFJYMyiJlIpZ5Tihn8nAN6v
+xtnoh5rjpULw1EAw4symdFdsJbyzocf4wAlN6vkSewF0Uuoq9tMfG3+5H2Z/hQBS
+wruzsYT0Cxs05Cj1YycoKd+yCI7QVMI0kmSwxBCZOv2Ezw2qNX2URO0CgYEA0yBo
+FQOrMdrrZmmYeWTroCQtemoqb5C+SGPWzQZJr0nAV+OeXW1o2nIV+prjBGlJe4yx
+ex0L6dqr9iIfEWcsiGYbr4Uc1l7tI0923KABza1KaNYZuZXAPKHuGehnhP31SekE
+XwPxKlp82Y4/uRkLlFl0p0I4YxjJUc+0YdqFyf8CgYA+56ItoUaM0AHjQexINrLs
+hTKt/SPY5shFyU0VOyVCgbf0ULAExi+TfRomfzOIXF6ro2cUCev+jBwK38dYt62C
+jYFpQ0lBxBTkzbYr4MwKLS+pU5aqKHo3d3OPTLiFwCc+f+xHkDCFkZqaQbIFGDQK
+V/qKJ0ql7iBXsgQQThElyQKBgQCVi23N/MRFUxDMgN1cl0yDKT0BabPXRIpT0kwy
++1I0FCRm3Lau7LGJkafZ094boMxI9DY+wytOIPMPK8of1Jnpn5HauIndmm2URlQm
+IDxGyIldStH774O0LurtdP3maNBW4vOSrcMkQeYPX7/pR0E5ekeztaclIkhvZ5UY
+fuWnVwKBgGj9PZqGK6y8jamQKbKwFhCM2JQcIM+taeAFYlNgg7MFEnK3R/LBmYSd
+v0U5lsWBjVpg5Kl93VpXLTWLPfVQ0RLFP5xMn/hMA8EfJr710BG8X7SMw+diCe+H
+li680TcWMAl3V2KeKpvCMnFj/b7i/1SCMifN8kYt5ga039w25SEK
+-----END RSA PRIVATE KEY-----`
 
 // Copied from keymaster's lib/certutil
 func getSignerFromPEMBytes(privateKey []byte) (crypto.Signer, error) {
@@ -75,6 +107,21 @@ func getSignerFromPEMBytes(privateKey []byte) (crypto.Signer, error) {
 	}
 }
 
+func getTestCertSigner() (crypto.Signer, ssh.Signer, []byte, error) {
+	cryptoSigner, err := getSignerFromPEMBytes([]byte(testIssuerPrivateKey))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sshSigner, err := ssh.NewSignerFromSigner(cryptoSigner)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sshPub := sshSigner.PublicKey()
+	ssh.MarshalAuthorizedKey(sshPub)
+	return cryptoSigner, sshSigner, ssh.MarshalAuthorizedKey(sshPub), nil
+
+}
+
 func TestFingerprintSHA256(t *testing.T) {
 	signer, err := getSignerFromPEMBytes([]byte(testUserPrivateKey))
 	if err != nil {
@@ -85,8 +132,36 @@ func TestFingerprintSHA256(t *testing.T) {
 		t.Fatal(err)
 	}
 	computedFP := FingerprintSHA256(sshSigner.PublicKey())
-	if computedFP != expectedFP {
-		t.Fatalf("expected does not match expacted=%s, computed=%s", expectedFP, computedFP)
+	if computedFP != testUserPrivateKeySHA256 {
+		t.Fatalf("expected does not match expacted=%s, computed=%s", testUserPrivateKeySHA256, computedFP)
+	}
+
+}
+
+func TestNewAuthenticator(t *testing.T) {
+	authenticator := NewAuthenticator([]string{"localhost"}, []string{exampleSignerPub})
+	if authenticator == nil {
+		t.Fatal("Did not worked well")
+	}
+}
+
+func TestIsUserAuthority(t *testing.T) {
+	_, signer, signerPub, err := getTestCertSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := NewAuthenticator([]string{"localhost"}, []string{string(signerPub)})
+	if a == nil {
+		t.Fatal("Did not worked well")
+	}
+	valid := a.isUserAuthority(signer.PublicKey())
+	if !valid {
+		t.Fatal("should have validated")
+	}
+	a2 := NewAuthenticator([]string{"localhost"}, []string{exampleSignerPub})
+	valid = a2.isUserAuthority(signer.PublicKey())
+	if valid {
+		t.Fatal("should NOT have validated")
 	}
 
 }
