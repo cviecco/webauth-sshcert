@@ -37,7 +37,7 @@ func (a *Authenticator) isUserAuthority(auth ssh.PublicKey) bool {
 	for _, signer := range a.caKeys {
 		sshCaPub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signer))
 		if err != nil {
-			log.Printf("error parsing ssh PubCA", err)
+			log.Printf("error parsing ssh PubCA, %s", err)
 			continue
 		}
 		if bytes.Equal(sshCaPub.Marshal(), auth.Marshal()) {
