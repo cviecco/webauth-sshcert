@@ -1,13 +1,17 @@
 package sshCertAuth
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -107,6 +111,15 @@ func getSignerFromPEMBytes(privateKey []byte) (crypto.Signer, error) {
 	}
 }
 
+//
+func goCertToFileString(c ssh.Certificate) string {
+	certBytes := c.Marshal()
+	encoded := base64.StdEncoding.EncodeToString(certBytes)
+	fileComment := "/somecert"
+	// TODO: do not assume is an rsa cert
+	return "ssh-rsa-cert-v01@openssh.com " + encoded + " " + fileComment
+}
+
 func getTestCertSigner() (crypto.Signer, ssh.Signer, []byte, error) {
 	cryptoSigner, err := getSignerFromPEMBytes([]byte(testIssuerPrivateKey))
 	if err != nil {
@@ -143,6 +156,7 @@ func TestNewAuthenticator(t *testing.T) {
 	if authenticator == nil {
 		t.Fatal("Did not worked well")
 	}
+	// TODO: check with invalid signer string
 }
 
 func TestIsUserAuthority(t *testing.T) {
@@ -162,6 +176,48 @@ func TestIsUserAuthority(t *testing.T) {
 	valid = a2.isUserAuthority(signer.PublicKey())
 	if valid {
 		t.Fatal("should NOT have validated")
+	}
+
+}
+
+func TestValidateSSHCertString(t *testing.T) {
+	_, signer, signerPub, err := getTestCertSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := NewAuthenticator([]string{"localhost"}, []string{string(signerPub)})
+	if a == nil {
+		t.Fatal("Did not worked well")
+	}
+
+	// Generate user cert with signer
+	userPrivateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userPub := userPrivateKey.Public()
+	t.Logf("userPub is %T", userPub)
+	sshPub, err := ssh.NewPublicKey(userPub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentEpoch := uint64(time.Now().Unix())
+	expireEpoch := currentEpoch + uint64(30)
+	cert := ssh.Certificate{
+		Key:             sshPub,
+		CertType:        ssh.UserCert,
+		ValidPrincipals: []string{"someuser"},
+		SignatureKey:    signer.PublicKey(),
+		ValidAfter:      currentEpoch,
+		ValidBefore:     expireEpoch,
+	}
+	err = cert.SignCert(bytes.NewReader(cert.Marshal()), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(cert))
+	if err != nil {
+		t.Fatal(err)
 	}
 
 }
