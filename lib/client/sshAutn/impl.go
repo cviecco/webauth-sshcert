@@ -86,7 +86,7 @@ func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []s
 func (s *SSHAuthenticator) doChallengerResponseCall(
 	nonce1 string,
 	challenge string,
-	agentClient agent.ExtendedAgent,
+	agentClient agent.Agent,
 	key *agent.Key) error {
 	pubKey, err := ssh.ParsePublicKey(key.Marshal())
 	if err != nil {
@@ -107,7 +107,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 		log.Println(err)
 		return err
 	}
-	s.loggerPrintf(2, "singature=%+v", signature)
+	s.loggerPrintf(2, "singature(new)=%+v", signature)
 
 	//
 	values2 := url.Values{
@@ -159,6 +159,10 @@ func (s *SSHAuthenticator) loginWithAgentSocket() error {
 		return fmt.Errorf("LoginWithAgentSocket: Failed to connect to agent Socket: %v", err)
 	}
 	agentClient := agent.NewClient(conn)
+	return s.loginWithAgent(agentClient)
+}
+
+func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) error {
 	keyList, err := agentClient.List()
 	if err != nil {
 		return err

@@ -3,7 +3,8 @@ package sshAutn
 import (
 	"net/http"
 	"net/url"
-	//"golang.org/x/crypto/ssh/agent"
+
+	"golang.org/x/crypto/ssh/agent"
 )
 
 type SSHAuthenticator struct {
@@ -40,4 +41,8 @@ func NewAuthenticator(baseURL string, client *http.Client) (*SSHAuthenticator, e
 
 func (s *SSHAuthenticator) DoLogin() error {
 	return s.loginWithAgentSocket()
+}
+
+func (s *SSHAuthenticator) DoLoginWithAgent(agentClient agent.Agent) error {
+	return s.loginWithAgent(agentClient)
 }
