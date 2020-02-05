@@ -55,7 +55,7 @@ func (a *Authenticator) computeCAFingeprints() error {
 	return nil
 }
 
-func (a *Authenticator) validateSSHCertString(r *http.Request, encodedSshCert string) (*ssh.Certificate, string, error) {
+func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certificate, string, error) {
 	if encodedSshCert == "" {
 		return nil, "Missing Parameter (sshCert)", fmt.Errorf("Missing Parameter (sshCert)")
 	}
@@ -211,7 +211,7 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 	}
 
 	encodedSshCert := r.Form.Get("sshCert")
-	sshCert, userErrText, err := a.validateSSHCertString(r, encodedSshCert)
+	sshCert, userErrText, err := a.validateSSHCertString(encodedSshCert)
 	if err != nil {
 		//http.Error(w, "", http.StatusBadRequest)
 		return "", time.Time{}, userErrText, err
