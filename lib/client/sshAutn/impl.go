@@ -1,9 +1,6 @@
 package sshAutn
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	//"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -21,20 +18,9 @@ import (
 
 	"github.com/Cloud-Foundations/npipe"
 
+	"github.com/cviecco/webauth-sshcert/lib/cryptoutil"
 	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
 )
-
-const randomStringEntropyBytes = 32
-
-func genRandomString() (string, error) {
-	size := randomStringEntropyBytes
-	rb := make([]byte, size)
-	_, err := rand.Read(rb)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(rb), nil
-}
 
 func (s *SSHAuthenticator) loggerPrintf(level uint, format string, v ...interface{}) {
 	if level <= s.LogLevel {
@@ -45,7 +31,7 @@ func (s *SSHAuthenticator) loggerPrintf(level uint, format string, v ...interfac
 func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []string, error) {
 
 	// Nonce should be a a base64 encoded random number (256 bytes?)
-	nonce1, err := genRandomString()
+	nonce1, err := cryptoutil.GenRandomString()
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -88,21 +74,10 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 	challenge string,
 	agentClient agent.Agent,
 	key *agent.Key) error {
-	pubKey, err := ssh.ParsePublicKey(key.Marshal())
-	if err != nil {
-		return err
-	}
-	//TODO: check for the key being  a cert here
-	sshCert, ok := pubKey.(*ssh.Certificate)
-	if !ok {
-		log.Println("SSH public key is not a certificate")
-		fmt.Errorf("Not an SSH cert")
-	}
-	s.loggerPrintf(2, "cert=%+v", sshCert)
 
-	hash := sha256.Sum256([]byte(nonce1 + challenge))
-	//sign
-	signature, err := agentClient.Sign(pubKey, hash[:])
+	signature, err := cryptoutil.WithAgentGenerateChallengeResponseSignature(
+		nonce1, challenge, agentClient, key,
+	)
 	if err != nil {
 		log.Println(err)
 		return err
