@@ -12,6 +12,9 @@ build:
 	go build cmd/server/main.go
 	go build cmd/client/main.go
 
+get-deps:
+	go get -t ./...
+
 test:
 	go test ./...
 
