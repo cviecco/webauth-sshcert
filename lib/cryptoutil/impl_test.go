@@ -70,8 +70,15 @@ func TestSignatureRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = verifyChallengeResponseSignature(&cert, signature.Format, signature.Blob, nonce, challenge)
+	err = VerifyChallengeResponseSignature(&cert, signature.Format, signature.Blob, nonce, challenge)
 	if err != nil {
+		t.Fatal(err)
+	}
+	//now we use an invalid blob
+	brokenBlob := signature.Blob
+	brokenBlob[0] = brokenBlob[0] ^ 0101
+	err = VerifyChallengeResponseSignature(&cert, signature.Format, brokenBlob, nonce, challenge)
+	if err == nil {
 		t.Fatal(err)
 	}
 

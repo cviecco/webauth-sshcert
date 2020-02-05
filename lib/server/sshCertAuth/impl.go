@@ -3,9 +3,7 @@ package sshCertAuth
 import (
 	"bytes"
 	//"bufio"
-	"crypto/rand"
 	"crypto/sha256"
-	//"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -17,18 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cviecco/webauth-sshcert/lib/cryptoutil"
 	"golang.org/x/crypto/ssh"
 )
-
-func randomStringGeneration() (string, error) {
-	const size = 32
-	bytes := make([]byte, size)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(bytes), nil
-}
 
 // TODO: Marshal auth only once
 // TODO: Marshal ca's just once
@@ -132,7 +121,7 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		}
 	*/
 	///Now build response
-	challenge, err := randomStringGeneration()
+	challenge, err := cryptoutil.GenRandomString()
 	if err != nil {
 		http.Error(w, "", http.StatusInternalServerError)
 		return err
@@ -245,13 +234,8 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		a.pendingChallengeMutex.Unlock()
 		return "", time.Time{}, "Challenge expired", fmt.Errorf("Expired Challenge Found")
 	}
-
-	hash := sha256.Sum256([]byte(challengeData.Nonce1 + encodedNonce2))
-	signature2 := &ssh.Signature{
-		Format: signatureFormat,
-		Blob:   signatureBlob,
-	}
-	err = sshCert.Verify(hash[:], signature2)
+	err = cryptoutil.VerifyChallengeResponseSignature(sshCert,
+		signatureFormat, signatureBlob, challengeData.Nonce1, encodedNonce2)
 	if err != nil {
 		log.Println(err)
 		//http.Error(w, "", http.StatusUnauthorized)

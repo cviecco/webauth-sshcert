@@ -20,3 +20,11 @@ func WithAgentGenerateChallengeResponseSignature(clientNonce string,
 	return withAgentGenerateChallengeResponseSignature(clientNonce,
 		challenge, agentClient, key)
 }
+
+// Validates that the signature of a blob is actually signed by the corresponding certificate
+func VerifyChallengeResponseSignature(sshCert *ssh.Certificate,
+	signatureFormat string,
+	signatureBlob []byte, clientNonce,
+	challenge string) error {
+	return verifyChallengeResponseSignature(sshCert, signatureFormat, signatureBlob, clientNonce, challenge)
+}
