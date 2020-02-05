@@ -60,5 +60,14 @@ func withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
 	if len(keyList) < 1 {
 		return nil, fmt.Errorf("something wrong with keylist")
 	}
-	return withAgentGenerateChallengeResponseSignature(nonce1, challenge, keyring, keyList[0])
+	return WithAgentGenerateChallengeResponseSignature(nonce1, challenge, keyring, keyList[0])
+}
+
+func verifyChallengeResponseSignature(sshCert *ssh.Certificate, signatureFormat string, signatureBlob []byte, clientNonce, challenge string) error {
+	hash := sha256.Sum256([]byte(clientNonce + challenge))
+	signature := &ssh.Signature{
+		Format: signatureFormat,
+		Blob:   signatureBlob,
+	}
+	return sshCert.Verify(hash[:], signature)
 }
