@@ -15,16 +15,18 @@ func GenRandomString() (string, error) {
 // can be latter used to sing messages back to the server
 func WithAgentGenerateChallengeResponseSignature(clientNonce string,
 	challenge string,
+	hostname string,
 	agentClient agent.Agent,
 	key *agent.Key) (*ssh.Signature, error) {
 	return withAgentGenerateChallengeResponseSignature(clientNonce,
-		challenge, agentClient, key)
+		challenge, hostname, agentClient, key)
 }
 
 // Validates that the signature of a blob is actually signed by the corresponding certificate
 func VerifyChallengeResponseSignature(sshCert *ssh.Certificate,
 	signatureFormat string,
 	signatureBlob []byte, clientNonce,
-	challenge string) error {
-	return verifyChallengeResponseSignature(sshCert, signatureFormat, signatureBlob, clientNonce, challenge)
+	challenge string,
+	hostname string) error {
+	return verifyChallengeResponseSignature(sshCert, signatureFormat, signatureBlob, clientNonce, challenge, hostname)
 }

@@ -24,6 +24,7 @@ func genRandomString() (string, error) {
 
 func withAgentGenerateChallengeResponseSignature(clientNonce string,
 	challenge string,
+	hostname string,
 	agentClient agent.Agent,
 	key *agent.Key) (*ssh.Signature, error) {
 	pubKey, err := ssh.ParsePublicKey(key.Marshal())
@@ -36,12 +37,13 @@ func withAgentGenerateChallengeResponseSignature(clientNonce string,
 	}
 	//s.loggerPrintf(2, "cert=%+v", sshCert)
 
-	hash := sha256.Sum256([]byte(clientNonce + challenge))
+	hash := sha256.Sum256([]byte(clientNonce + hostname + challenge))
 	return agentClient.Sign(pubKey, hash[:])
 }
 
 func withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
 	challenge string,
+	hostname string,
 	certificate *ssh.Certificate,
 	privateKey interface{}) (*ssh.Signature, error) {
 	keyring := agent.NewKeyring()
@@ -60,11 +62,12 @@ func withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
 	if len(keyList) < 1 {
 		return nil, fmt.Errorf("something wrong with keylist")
 	}
-	return WithAgentGenerateChallengeResponseSignature(nonce1, challenge, keyring, keyList[0])
+	return WithAgentGenerateChallengeResponseSignature(nonce1, challenge, hostname, keyring, keyList[0])
 }
 
-func verifyChallengeResponseSignature(sshCert *ssh.Certificate, signatureFormat string, signatureBlob []byte, clientNonce, challenge string) error {
-	hash := sha256.Sum256([]byte(clientNonce + challenge))
+func verifyChallengeResponseSignature(sshCert *ssh.Certificate, signatureFormat string,
+	signatureBlob []byte, clientNonce, challenge, hostname string) error {
+	hash := sha256.Sum256([]byte(clientNonce + hostname + challenge))
 	signature := &ssh.Signature{
 		Format: signatureFormat,
 		Blob:   signatureBlob,
