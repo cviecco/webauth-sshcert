@@ -55,7 +55,7 @@ func (a *Authenticator) computeCAFingeprints() error {
 	return nil
 }
 
-func (a *Authenticator) validateSSHCertString(r *http.Request, encodedSshCert string) (*ssh.Certificate, string, error) {
+func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certificate, string, error) {
 	if encodedSshCert == "" {
 		return nil, "Missing Parameter (sshCert)", fmt.Errorf("Missing Parameter (sshCert)")
 	}
@@ -83,6 +83,13 @@ func (a *Authenticator) validateSSHCertString(r *http.Request, encodedSshCert st
 	certChecker := ssh.CertChecker{
 		IsUserAuthority: a.isUserAuthority,
 	}
+	if sshCert.CertType != ssh.UserCert {
+		return nil, "Invalid Certificate Type", fmt.Errorf("Invalid Certificate Type")
+	}
+	if !a.isUserAuthority(sshCert.SignatureKey) {
+		return nil, "Unrecognized Issuer", fmt.Errorf("Unrecognized Issuer")
+	}
+
 	err = certChecker.CheckCert(principal, sshCert)
 	if err != nil {
 		log.Printf("failt to checkCert err=%s", err)
@@ -211,7 +218,7 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 	}
 
 	encodedSshCert := r.Form.Get("sshCert")
-	sshCert, userErrText, err := a.validateSSHCertString(r, encodedSshCert)
+	sshCert, userErrText, err := a.validateSSHCertString(encodedSshCert)
 	if err != nil {
 		//http.Error(w, "", http.StatusBadRequest)
 		return "", time.Time{}, userErrText, err
