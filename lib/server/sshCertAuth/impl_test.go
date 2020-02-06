@@ -8,12 +8,19 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+
+	"github.com/cviecco/webauth-sshcert/lib/cryptoutil"
 )
 
 //  ssh-keygen -f /tmp/deleteme_rsa
@@ -133,6 +140,17 @@ func getTestCertSigner() (crypto.Signer, ssh.Signer, []byte, error) {
 	ssh.MarshalAuthorizedKey(sshPub)
 	return cryptoSigner, sshSigner, ssh.MarshalAuthorizedKey(sshPub), nil
 
+}
+
+func checkRequestHandlerCode(req *http.Request, handlerFunc http.HandlerFunc, expectedStatus int) (*httptest.ResponseRecorder, error) {
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(handlerFunc)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != expectedStatus {
+		return nil, fmt.Errorf("handler returned wrong status code: got %v want %v",
+			status, expectedStatus)
+	}
+	return rr, nil
 }
 
 func TestFingerprintSHA256(t *testing.T) {
@@ -289,5 +307,132 @@ func TestValidateSSHCertString(t *testing.T) {
 	if err == nil {
 		t.Fatal("should not have validated bad type cert")
 	}
+	// now cert with no Valid principals
+	noPrincipalsCert := ssh.Certificate{
+		Key:          sshPub,
+		CertType:     ssh.UserCert,
+		SignatureKey: signer.PublicKey(),
+		ValidAfter:   currentEpoch,
+		ValidBefore:  expireEpoch,
+	}
+	err = noPrincipalsCert.SignCert(bytes.NewReader(noPrincipalsCert.Marshal()), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(noPrincipalsCert))
+	if err == nil {
+		t.Fatal("should not have validated cert with no principals")
+	}
 
+	// now a key not a cert
+	_, _, err = a.validateSSHCertString(string(signerPub))
+	if err == nil {
+		t.Fatal("should not have validated a key")
+	}
+	// now with empty string
+	_, _, err = a.validateSSHCertString("")
+	if err == nil {
+		t.Fatal("should not have validated empty string")
+	}
+	// now with a non-cert-non ssh string
+	_, _, err = a.validateSSHCertString("hello")
+	if err == nil {
+		t.Fatal("should not have validated non ssh string")
+	}
+
+}
+
+func TestCreateChallengeHandlerAndLogin(t *testing.T) {
+	_, signer, signerPub, err := getTestCertSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := NewAuthenticator([]string{"localhost"}, []string{string(signerPub)})
+	if a == nil {
+		t.Fatal("Did not worked well")
+	}
+	nonce, err := cryptoutil.GenRandomString()
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := url.Values{}
+	v.Set("nonce1", nonce)
+	targetURL := "/someURL" //TODO need to make this a const
+	req, err := http.NewRequest("POST", targetURL, bytes.NewBufferString(v.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	//t.Logf("req=%+v", req)
+	w := httptest.NewRecorder()
+	err = a.CreateChallengeHandler(w, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("did not return valid status code, got %d", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	//
+	// Dump response
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var jsonChallenge ChallengeResponseData
+	err = json.Unmarshal(data, &jsonChallenge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%+v", jsonChallenge)
+
+	//Now we generate a cert
+
+	// Generate user cert with signer
+	userPrivateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userPub := userPrivateKey.Public()
+	t.Logf("userPub is %T", userPub)
+	sshPub, err := ssh.NewPublicKey(userPub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentEpoch := uint64(time.Now().Unix())
+	expireEpoch := currentEpoch + uint64(30)
+	cert := ssh.Certificate{
+		Key:             sshPub,
+		CertType:        ssh.UserCert,
+		ValidPrincipals: []string{"someuser"},
+		SignatureKey:    signer.PublicKey(),
+		ValidAfter:      currentEpoch,
+		ValidBefore:     expireEpoch,
+	}
+	err = cert.SignCert(bytes.NewReader(cert.Marshal()), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certString := goCertToFileString(cert)
+	_, _, err = a.validateSSHCertString(certString)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signature, err := cryptoutil.WithCertAndPrivateKeyGenerateChallengeResponseSignature(
+		nonce,
+		jsonChallenge.Challenge,
+		"localhost",
+		&cert,
+		userPrivateKey,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("signature=+%v", signature)
+
+	/*
+		_, err = checkRequestHandlerCode(req, a.CreateChallengeHandler, http.StatusOK)
+		if err != nil {
+			t.Fatal(err)
+		}
+	*/
+	//TODO check content data
 }
