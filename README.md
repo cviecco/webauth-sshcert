@@ -1,5 +1,6 @@
 # webauth ssh-cert
 [![Build Status](https://travis-ci.org/cviecco/webauth-sshcert.svg?branch=master)](https://travis-ci.org/cviecco/webauth-sshcert)
+
 Demo/Design for webauth using  for ssh certs using the ssh agent.
 
 The motivation is on having SSO for CLI utilities without the need of generating identity/authentication tokens that can be reused by misbehaving servers. The other goal is to reduce the number of cli operations needed by clients.
