@@ -83,6 +83,13 @@ func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certi
 	certChecker := ssh.CertChecker{
 		IsUserAuthority: a.isUserAuthority,
 	}
+	if sshCert.CertType != ssh.UserCert {
+		return nil, "Invalid Certificate Type", fmt.Errorf("Invalid Certificate Type")
+	}
+	if !a.isUserAuthority(sshCert.SignatureKey) {
+		return nil, "Unrecognized Issuer", fmt.Errorf("Unrecognized Issuer")
+	}
+
 	err = certChecker.CheckCert(principal, sshCert)
 	if err != nil {
 		log.Printf("failt to checkCert err=%s", err)

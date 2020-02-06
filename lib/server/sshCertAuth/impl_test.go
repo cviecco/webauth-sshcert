@@ -219,5 +219,47 @@ func TestValidateSSHCertString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	//now an expired one
+	expiredCert := ssh.Certificate{
+		Key:             sshPub,
+		CertType:        ssh.UserCert,
+		ValidPrincipals: []string{"someuser"},
+		SignatureKey:    signer.PublicKey(),
+		ValidAfter:      currentEpoch - 7200,
+		ValidBefore:     currentEpoch - 3600,
+	}
+	err = expiredCert.SignCert(bytes.NewReader(expiredCert.Marshal()), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(expiredCert))
+	if err == nil {
+		t.Fatal("should not have validated expired cert")
+	}
+	//now with an unstrusted signer
+	untrustedSignerKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	untrustedSigner, err := ssh.NewSignerFromSigner(untrustedSignerKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	untrustedCert := ssh.Certificate{
+		Key:             sshPub,
+		CertType:        ssh.UserCert,
+		ValidPrincipals: []string{"someuser"},
+		SignatureKey:    untrustedSigner.PublicKey(),
+		ValidAfter:      currentEpoch,
+		ValidBefore:     expireEpoch,
+	}
+	err = untrustedCert.SignCert(bytes.NewReader(untrustedCert.Marshal()), untrustedSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(untrustedCert))
+	if err == nil {
+		t.Fatal("should not have validated untrusted cert")
+	}
 
 }
