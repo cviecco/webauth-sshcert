@@ -5,13 +5,14 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// Returns 32 bytes of random string encoded
+// GenRandomString returns 32 bytes of random string encoded
 // with URL base64 encoding
 func GenRandomString() (string, error) {
 	return genRandomString()
 }
 
-// Given the client parameters, generates a valid ssh signature that
+// WithAgentGenerateChallengeResponseSignature generates,
+// given the client parameters, a valid ssh signature that
 // can be latter used to sing messages back to the server
 func WithAgentGenerateChallengeResponseSignature(clientNonce string,
 	challenge string,
@@ -20,6 +21,20 @@ func WithAgentGenerateChallengeResponseSignature(clientNonce string,
 	key *agent.Key) (*ssh.Signature, error) {
 	return withAgentGenerateChallengeResponseSignature(clientNonce,
 		challenge, hostname, agentClient, key)
+}
+
+// WithCertAndPrivateKeyGenerateChallengeResponseSignature
+// similar to WithAgentGenerateChallengeResponseSignature but instead
+// of an agent uses an explicit certifiate and keu
+func WithCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
+	challenge string,
+	hostname string,
+	certificate *ssh.Certificate,
+	privateKey interface{}) (*ssh.Signature, error) {
+	return withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1,
+		challenge,
+		hostname,
+		certificate, privateKey)
 }
 
 // Validates that the signature of a blob is actually signed by the corresponding certificate

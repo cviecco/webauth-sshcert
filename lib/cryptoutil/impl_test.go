@@ -66,7 +66,7 @@ func TestSignatureRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signature, err := withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce,
+	signature, err := WithCertAndPrivateKeyGenerateChallengeResponseSignature(nonce,
 		challenge,
 		hostname,
 		&cert,
