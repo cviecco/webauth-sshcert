@@ -261,5 +261,33 @@ func TestValidateSSHCertString(t *testing.T) {
 	if err == nil {
 		t.Fatal("should not have validated untrusted cert")
 	}
+	//now evil issuer signs a cert with the public key of the good one
+	invalidSignerCert := ssh.Certificate{
+		Key:             sshPub,
+		CertType:        ssh.UserCert,
+		ValidPrincipals: []string{"someuser"},
+		SignatureKey:    signer.PublicKey(),
+		ValidAfter:      currentEpoch,
+		ValidBefore:     expireEpoch,
+	}
+	err = invalidSignerCert.SignCert(bytes.NewReader(invalidSignerCert.Marshal()), untrustedSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(invalidSignerCert))
+	if err == nil {
+		t.Fatal("should not have validated invalid signed cert")
+	}
+	// Now a cert with the right signer but invalid type
+	invalidTypeCert := cert
+	invalidTypeCert.CertType = ssh.HostCert
+	err = invalidTypeCert.SignCert(bytes.NewReader(invalidTypeCert.Marshal()), signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = a.validateSSHCertString(goCertToFileString(invalidTypeCert))
+	if err == nil {
+		t.Fatal("should not have validated bad type cert")
+	}
 
 }

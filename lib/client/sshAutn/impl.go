@@ -75,8 +75,9 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 	agentClient agent.Agent,
 	key *agent.Key) error {
 
+	hostname := s.baseURL.Hostname()
 	signature, err := cryptoutil.WithAgentGenerateChallengeResponseSignature(
-		nonce1, challenge, agentClient, key,
+		nonce1, challenge, hostname, agentClient, key,
 	)
 	if err != nil {
 		log.Println(err)
@@ -89,7 +90,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 		"nonce1":          {nonce1},
 		"sshCert":         {key.String()},
 		"challenge":       {challenge},
-		"hostname":        {s.baseURL.Hostname()},
+		"hostname":        {hostname},
 		"signatureFormat": {signature.Format},
 		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
 	}
