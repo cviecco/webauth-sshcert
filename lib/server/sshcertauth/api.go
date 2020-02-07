@@ -32,6 +32,16 @@ type ChallengeResponseData struct {
 	AllowedIssuerFingerprints []string `json:"allowed_issuer_fingerprints,omitempty"`
 }
 
+// DefaultCreateChallengePath is a well known path that
+// is suggested to be used by consumers of this library
+// This will be used by default by clients using the client
+// library.
+const DefaultCreateChallengePath = "/webauth-sshcert/v1/getChallenge"
+
+// DefaultLoginWithChallengePath is a well known path that
+// is suggested to be used by consumers of this library
+const DefaultLoginWithChallengePath = "/webauth-sshcert/v1/loginWithChallenge"
+
 // FingerprintSHA256 returns the base64 encoding of the sha256 hash
 // with the trailing equal sign removed
 func FingerprintSHA256(key ssh.PublicKey) string {

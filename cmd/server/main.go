@@ -153,8 +153,8 @@ func main() {
 	}
 
 	http.HandleFunc("/echoIdentity", server.echoIdentityHandler)
-	http.HandleFunc("/getChallenge", server.CreateChallengeHandler)
-	http.HandleFunc("/loginWithChallenge", server.LoginWithChallengeHandler)
+	http.HandleFunc(sshcertauth.DefaultCreateChallengePath, server.CreateChallengeHandler)
+	http.HandleFunc(sshcertauth.DefaultLoginWithChallengePath, server.LoginWithChallengeHandler)
 	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
