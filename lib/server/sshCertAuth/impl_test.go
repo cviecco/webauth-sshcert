@@ -204,7 +204,6 @@ func TestValidateSSHCertString(t *testing.T) {
 		t.Fatal(err)
 	}
 	userPub := userPrivateKey.Public()
-	t.Logf("userPub is %T", userPub)
 	sshPub, err := ssh.NewPublicKey(userPub)
 	if err != nil {
 		t.Fatal(err)
@@ -372,7 +371,6 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("%+v", jsonChallenge)
 
 	//Now we generate a cert
 
@@ -382,7 +380,6 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	userPub := userPrivateKey.Public()
-	t.Logf("userPub is %T", userPub)
 	sshPub, err := ssh.NewPublicKey(userPub)
 	if err != nil {
 		t.Fatal(err)
@@ -416,7 +413,6 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("signature=+%v", signature)
 	values2 := url.Values{
 		"nonce1":          {nonce},
 		"sshCert":         {certString},

@@ -73,7 +73,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 	nonce1 string,
 	challenge string,
 	agentClient agent.Agent,
-	key *agent.Key) error {
+	key *agent.Key) ([]byte, http.Header, error) {
 
 	hostname := s.baseURL.Hostname()
 	signature, err := cryptoutil.WithAgentGenerateChallengeResponseSignature(
@@ -81,7 +81,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 	)
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, nil, err
 	}
 	s.loggerPrintf(2, "singature(new)=%+v", signature)
 
@@ -97,26 +97,29 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 
 	req2, err := http.NewRequest("POST", s.rawBaseURL+s.loginWithChallengePath, strings.NewReader(values2.Encode()))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	//req2.Header.Set("User-Agent", userAgentString)
 	resp2, err := s.client.Do(req2)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer resp2.Body.Close()
 
-	responseBytes, err := ioutil.ReadAll(resp2.Body)
-	if err != nil {
-		return err
+	var responseBytes []byte
+	if resp2.ContentLength > 0 {
+		responseBytes, err = ioutil.ReadAll(resp2.Body)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	if resp2.StatusCode >= 300 {
-		return fmt.Errorf("bad status response=%d, data=%s", resp2.StatusCode, string(responseBytes))
+		return nil, nil, fmt.Errorf("bad status response=%d, data=%s", resp2.StatusCode, string(responseBytes))
 	}
 	s.loggerPrintf(1, "Login Success")
 
-	return nil
+	return responseBytes, resp2.Header, nil
 
 }
 
@@ -129,24 +132,24 @@ func connectToDefaultSSHAgentLocation() (net.Conn, error) {
 	return net.Dial("unix", socket)
 }
 
-func (s *SSHAuthenticator) loginWithAgentSocket() error {
+func (s *SSHAuthenticator) loginWithAgentSocket() ([]byte, http.Header, error) {
 	conn, err := connectToDefaultSSHAgentLocation()
 	if err != nil {
-		return fmt.Errorf("LoginWithAgentSocket: Failed to connect to agent Socket: %v", err)
+		return nil, nil, fmt.Errorf("LoginWithAgentSocket: Failed to connect to agent Socket: %v", err)
 	}
 	agentClient := agent.NewClient(conn)
 	return s.loginWithAgent(agentClient)
 }
 
-func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) error {
+func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) ([]byte, http.Header, error) {
 	keyList, err := agentClient.List()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	//now go remote
 	nonce1, challenge, issuerFingerprints, err := s.getChallengeNonceAndSignerList()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	var lastErr error
@@ -177,13 +180,13 @@ func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) error {
 		}
 
 		//lastErr = s.loginWithCertAndAgent(agentClient, key)
-		lastErr = s.doChallengerResponseCall(nonce1, challenge, agentClient, key)
+		content, headers, lastErr := s.doChallengerResponseCall(nonce1, challenge, agentClient, key)
 		if lastErr != nil {
 			log.Printf("Error using cert %s", key.String())
 			continue
 		}
-		return nil
+		return content, headers, nil
 
 	}
-	return fmt.Errorf("Could not login, last err=%s", lastErr)
+	return nil, nil, fmt.Errorf("Could not login, last err=%s", lastErr)
 }
