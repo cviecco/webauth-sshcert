@@ -28,7 +28,8 @@ type ChallengeResponseData struct {
 	AllowedIssuerFingerprints []string `json:"allowed_issuer_fingerprints,omitempty"`
 }
 
-// base64 sha256 hash with the trailing equal sign removed
+// FingerprintSHA256 returns the base64 encoding of the sha256 hash
+// with the trailing equal sign removed
 func FingerprintSHA256(key ssh.PublicKey) string {
 	return fingerprintSHA256(key)
 }

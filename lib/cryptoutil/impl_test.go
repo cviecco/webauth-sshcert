@@ -25,7 +25,10 @@ func TestGenRandomString(t *testing.T) {
 }
 
 func TestSignatureRoundTrip(t *testing.T) {
-
+	hostname, err := GenRandomString()
+	if err != nil {
+		t.Fatal(err)
+	}
 	signerPrivateKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		t.Fatal(err)
@@ -63,23 +66,29 @@ func TestSignatureRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signature, err := withCertAndPrivateKeyGenerateChallengeResponseSignature(nonce,
+	signature, err := WithCertAndPrivateKeyGenerateChallengeResponseSignature(nonce,
 		challenge,
+		hostname,
 		&cert,
 		userPrivateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = VerifyChallengeResponseSignature(&cert, signature.Format, signature.Blob, nonce, challenge)
+	err = VerifyChallengeResponseSignature(&cert, signature.Format, signature.Blob, nonce, challenge, hostname)
 	if err != nil {
 		t.Fatal(err)
 	}
 	//now we use an invalid blob
 	brokenBlob := signature.Blob
 	brokenBlob[0] = brokenBlob[0] ^ 0101
-	err = VerifyChallengeResponseSignature(&cert, signature.Format, brokenBlob, nonce, challenge)
+	err = VerifyChallengeResponseSignature(&cert, signature.Format, brokenBlob, nonce, challenge, hostname)
 	if err == nil {
 		t.Fatal(err)
+	}
+	// now with an incorrect hostname on validation
+	err = VerifyChallengeResponseSignature(&cert, signature.Format, signature.Blob, nonce, challenge, "some hostname")
+	if err == nil {
+		t.Fatal("should not have validated invalid hostname")
 	}
 
 }

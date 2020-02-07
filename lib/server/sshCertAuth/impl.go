@@ -242,7 +242,8 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Challenge expired", fmt.Errorf("Expired Challenge Found")
 	}
 	err = cryptoutil.VerifyChallengeResponseSignature(sshCert,
-		signatureFormat, signatureBlob, challengeData.Nonce1, encodedNonce2)
+		signatureFormat, signatureBlob,
+		challengeData.Nonce1, encodedNonce2, hostname)
 	if err != nil {
 		log.Println(err)
 		//http.Error(w, "", http.StatusUnauthorized)
