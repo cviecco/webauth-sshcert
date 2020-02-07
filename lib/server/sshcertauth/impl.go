@@ -1,4 +1,4 @@
-package sshCertAuth
+package sshcertauth
 
 import (
 	"bytes"
@@ -55,14 +55,14 @@ func (a *Authenticator) computeCAFingeprints() error {
 	return nil
 }
 
-func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certificate, string, error) {
-	if encodedSshCert == "" {
+func (a *Authenticator) validateSSHCertString(encodedSSHCert string) (*ssh.Certificate, string, error) {
+	if encodedSSHCert == "" {
 		return nil, "Missing Parameter (sshCert)", fmt.Errorf("Missing Parameter (sshCert)")
 	}
 	// TODO: Validate inbound data cert (regexp + size)
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSshCert))
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSSHCert))
 	if err != nil {
-		log.Printf("sshCert=%s", encodedSshCert)
+		log.Printf("sshCert=%s", encodedSSHCert)
 		log.Println(err)
 		return nil, "Invalid SSH cert", fmt.Errorf("Invalid Ssh Cert (not valid ssh)")
 	}
@@ -200,8 +200,8 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Missing bad signature Format", err
 	}
 
-	encodedSshCert := r.Form.Get("sshCert")
-	sshCert, userErrText, err := a.validateSSHCertString(encodedSshCert)
+	encodedSSHCert := r.Form.Get("sshCert")
+	sshCert, userErrText, err := a.validateSSHCertString(encodedSSHCert)
 	if err != nil {
 		//http.Error(w, "", http.StatusBadRequest)
 		return "", time.Time{}, userErrText, err
