@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,17 +141,6 @@ func getTestCertSigner() (crypto.Signer, ssh.Signer, []byte, error) {
 	ssh.MarshalAuthorizedKey(sshPub)
 	return cryptoSigner, sshSigner, ssh.MarshalAuthorizedKey(sshPub), nil
 
-}
-
-func checkRequestHandlerCode(req *http.Request, handlerFunc http.HandlerFunc, expectedStatus int) (*httptest.ResponseRecorder, error) {
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != expectedStatus {
-		return nil, fmt.Errorf("handler returned wrong status code: got %v want %v",
-			status, expectedStatus)
-	}
-	return rr, nil
 }
 
 func TestFingerprintSHA256(t *testing.T) {
@@ -427,12 +417,25 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("signature=+%v", signature)
+	values2 := url.Values{
+		"nonce1":          {nonce},
+		"sshCert":         {certString},
+		"challenge":       {jsonChallenge.Challenge},
+		"hostname":        {"localhost"},
+		"signatureFormat": {signature.Format},
+		"signatureBlob":   {base64.URLEncoding.EncodeToString(signature.Blob)},
+	}
+	req2, err := http.NewRequest("POST", "loginChallengePath", strings.NewReader(values2.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	authUser, _, _, err := a.LoginWithChallenge(req2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if authUser != "someuser" {
+		t.Fatal("mismatch user auth")
+	}
 
-	/*
-		_, err = checkRequestHandlerCode(req, a.CreateChallengeHandler, http.StatusOK)
-		if err != nil {
-			t.Fatal(err)
-		}
-	*/
-	//TODO check content data
 }
