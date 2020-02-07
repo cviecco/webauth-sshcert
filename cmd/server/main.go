@@ -21,14 +21,15 @@ import (
 	//"golang.org/x/crypto/ssh"
 )
 
-type AuthCookieStruct struct {
+type authCookieStruct struct {
 	Username  string
 	ExpiresAt time.Time
 }
 
+// Server this is the demo server and associated structs
 type Server struct {
 	authenticator *sshcertauth.Authenticator
-	authCookie    map[string]AuthCookieStruct
+	authCookie    map[string]authCookieStruct
 	cookieMutex   sync.Mutex
 }
 
@@ -63,7 +64,7 @@ func (s *Server) setAndStoreAuthCookie(w http.ResponseWriter, username string, m
 	}
 	userCookie := http.Cookie{Name: authCookieName, Value: randomString, Path: "/", Expires: expires, HttpOnly: true, Secure: true}
 	http.SetCookie(w, &userCookie)
-	Cookieinfo := AuthCookieStruct{username, userCookie.Expires}
+	Cookieinfo := authCookieStruct{username, userCookie.Expires}
 	s.cookieMutex.Lock()
 	s.authCookie[userCookie.Value] = Cookieinfo
 	s.cookieMutex.Unlock()
@@ -107,13 +108,21 @@ func (s *Server) echoIdentityHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, outString)
 }
 
+// CreateChallengeHandler is an example of how to write a handler for
+// the path to create the challenge
 func (s *Server) CreateChallengeHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.authenticator.CreateChallengeHandler(w, r)
 	if err != nil {
 		log.Printf("there was an err: %s", err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
 	}
 }
 
+// LoginWithChallengeHandler is an example on how to handle the call to login withChallenge
+// path. Notice that we fist do the authentication checks, then we create the session
+// and we finalize with setting a cookie (which in this implementaiton) is used to track
+// user sessions.
 func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Request) {
 	authUser, maxAge, userErrString, err := s.authenticator.LoginWithChallenge(r)
 	if err != nil {
@@ -140,7 +149,7 @@ func main() {
 
 	server := Server{
 		authenticator: sshcertauth.NewAuthenticator([]string{"localhost"}, []string{exampleSigner}),
-		authCookie:    make(map[string]AuthCookieStruct),
+		authCookie:    make(map[string]authCookieStruct),
 	}
 
 	http.HandleFunc("/echoIdentity", server.echoIdentityHandler)
