@@ -59,7 +59,6 @@ func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certi
 	if encodedSshCert == "" {
 		return nil, "Missing Parameter (sshCert)", fmt.Errorf("Missing Parameter (sshCert)")
 	}
-	//log.Printf("sshCert=%s", encodedSshCert)
 	// TODO: Validate inbound data cert (regexp + size)
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(encodedSshCert))
 	if err != nil {
@@ -72,7 +71,6 @@ func (a *Authenticator) validateSSHCertString(encodedSshCert string) (*ssh.Certi
 		log.Printf("it is not a cert")
 		return nil, "This is a key not a cert", fmt.Errorf("This is a key, not a cert")
 	}
-	//log.Printf("pubkey=%+v", sshCert)
 	// now we validate the cert
 	//verify the cert....
 	if len(sshCert.ValidPrincipals) != 1 {
@@ -118,15 +116,6 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 		return fmt.Errorf("Missing Parameter (Nonce1)")
 	}
 	// TODO: validate nonce1 is actually a valid base64 value
-	//log.Printf("nonce1=%s", encodedNonce1)
-	/*
-		encodedSshCert := r.Form.Get("sshCert")
-		_, userErrText, err := a.validateSSHCertString(r, encodedSshCert)
-		if err != nil {
-			http.Error(w, userErrText, http.StatusBadRequest)
-			return err
-		}
-	*/
 	///Now build response
 	challenge, err := cryptoutil.GenRandomString()
 	if err != nil {
@@ -147,7 +136,6 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(returnData)
-	//log.Printf("Challenge Created")
 	return nil
 }
 func (a *Authenticator) verifyHostname(hostname string) (bool, error) {
@@ -179,15 +167,11 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Missing parameter challenge", fmt.Errorf("Missing parameter challenge")
 
 	}
-	// TODO: validate nonce1 is actually a valid base64 value
-	log.Printf("nonce2=%s", encodedNonce2)
 	hostname := r.Form.Get("hostname")
 	if hostname == "" {
 		return "", time.Time{}, "Missing parameter hostname", fmt.Errorf("Missing parameter hostname")
 
 	}
-	// TODO: validate nonce1 is actually a valid base64 value
-	log.Printf("hostname=%s", hostname)
 	valid, err := a.verifyHostname(hostname)
 	if err != nil {
 		return "", time.Time{}, "", err
@@ -203,7 +187,6 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Missing parameter signatureFormat", fmt.Errorf("Missing parameter signatureFormat")
 	}
 	// TODO: validate the signature format is sane
-	log.Printf("signatureFormat=%s", signatureFormat)
 	encodedSignatureBlob := r.Form.Get("signatureBlob")
 	if encodedSignatureBlob == "" {
 		//http.Error(w, "", http.StatusBadRequest)
