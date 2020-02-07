@@ -108,7 +108,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 	defer resp2.Body.Close()
 
 	var responseBytes []byte
-	if resp2.ContentLength < 0 {
+	if resp2.ContentLength > 0 {
 		responseBytes, err = ioutil.ReadAll(resp2.Body)
 		if err != nil {
 			return nil, nil, err
