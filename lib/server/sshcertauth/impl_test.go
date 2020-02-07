@@ -348,6 +348,9 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 	v.Set("nonce1", nonce)
 	targetURL := "/someURL" //TODO need to make this a const
 	req, err := http.NewRequest("POST", targetURL, bytes.NewBufferString(v.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	//t.Logf("req=%+v", req)
 	w := httptest.NewRecorder()
