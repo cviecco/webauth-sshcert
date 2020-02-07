@@ -39,10 +39,10 @@ func NewAuthenticator(baseURL string, client *http.Client) (*SSHAuthenticator, e
 	return &a, nil
 }
 
-func (s *SSHAuthenticator) DoLogin() error {
+func (s *SSHAuthenticator) DoLogin() ([]byte, http.Header, error) {
 	return s.loginWithAgentSocket()
 }
 
-func (s *SSHAuthenticator) DoLoginWithAgent(agentClient agent.Agent) error {
+func (s *SSHAuthenticator) DoLoginWithAgent(agentClient agent.Agent) ([]byte, http.Header, error) {
 	return s.loginWithAgent(agentClient)
 }

@@ -14,7 +14,6 @@ import (
 )
 
 const message = "hello"
-const randomStringEntropyBytes = 32
 
 var (
 	baseURL = flag.String("baseURL", "https://localhost:4443", "The demo server base URL")
@@ -37,7 +36,7 @@ func main() {
 		log.Fatalf("err=%s", err)
 	}
 	authenticator.LogLevel = 1
-	err = authenticator.DoLogin()
+	_, _, err = authenticator.DoLogin()
 	if err != nil {
 		log.Fatalf("err=%s", err)
 
