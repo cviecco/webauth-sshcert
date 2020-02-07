@@ -19,7 +19,7 @@ import (
 	"github.com/Cloud-Foundations/npipe"
 
 	"github.com/cviecco/webauth-sshcert/lib/cryptoutil"
-	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
+	"github.com/cviecco/webauth-sshcert/lib/server/sshcertauth"
 )
 
 func (s *SSHAuthenticator) loggerPrintf(level uint, format string, v ...interface{}) {
@@ -59,7 +59,7 @@ func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []s
 	}
 	//log.Println(string(data))
 
-	var newChallenge sshCertAuth.ChallengeResponseData
+	var newChallenge sshcertauth.ChallengeResponseData
 	err = json.Unmarshal(data, &newChallenge)
 	if err != nil {
 		return "", "", nil, err
@@ -166,7 +166,7 @@ func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) ([]byte, http
 			continue
 		}
 		s.loggerPrintf(2, "cert=%s", key.String())
-		issuerFP := sshCertAuth.FingerprintSHA256(sshCert.SignatureKey)
+		issuerFP := sshcertauth.FingerprintSHA256(sshCert.SignatureKey)
 		knownIssuer := false
 		for _, potentialSignerFP := range issuerFingerprints {
 			if issuerFP == potentialSignerFP {

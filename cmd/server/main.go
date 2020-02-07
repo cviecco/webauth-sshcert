@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
+	"github.com/cviecco/webauth-sshcert/lib/server/sshcertauth"
 	//"golang.org/x/crypto/ssh"
 )
 
@@ -27,7 +27,7 @@ type AuthCookieStruct struct {
 }
 
 type Server struct {
-	authenticator *sshCertAuth.Authenticator
+	authenticator *sshcertauth.Authenticator
 	authCookie    map[string]AuthCookieStruct
 	cookieMutex   sync.Mutex
 }
@@ -139,7 +139,7 @@ func main() {
 	log.SetFlags(log.Lshortfile)
 
 	server := Server{
-		authenticator: sshCertAuth.NewAuthenticator([]string{"localhost"}, []string{exampleSigner}),
+		authenticator: sshcertauth.NewAuthenticator([]string{"localhost"}, []string{exampleSigner}),
 		authCookie:    make(map[string]AuthCookieStruct),
 	}
 

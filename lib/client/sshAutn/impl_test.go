@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/cviecco/webauth-sshcert/lib/server/sshCertAuth"
+	"github.com/cviecco/webauth-sshcert/lib/server/sshcertauth"
 )
 
 func generateNewTestSignerAndCert(t *testing.T) (ssh.Signer, ssh.Certificate, interface{}) {
@@ -77,7 +77,7 @@ func generateNewTestCertSignerAndAgent(t *testing.T) (ssh.Signer, ssh.Certificat
 }
 
 func generateNewSSHAuthTestServer(caKeys []string, successBody string, t *testing.T) *httptest.Server {
-	sa := sshCertAuth.NewAuthenticator(
+	sa := sshcertauth.NewAuthenticator(
 		[]string{"localhost", "127.0.0.1"},
 		caKeys,
 	)
