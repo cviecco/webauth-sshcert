@@ -9,7 +9,7 @@ import (
 	"net/http/cookiejar"
 	"time"
 
-	"github.com/cviecco/webauth-sshcert/lib/client/sshAutn"
+	"github.com/cviecco/webauth-sshcert/lib/client/sshautn"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -31,7 +31,7 @@ func main() {
 	}
 	client := &http.Client{Transport: tr, Jar: jar, Timeout: 25 * time.Second}
 
-	authenticator, err := sshAutn.NewAuthenticator(*baseURL, client)
+	authenticator, err := sshautn.NewAuthenticator(*baseURL, client)
 	if err != nil {
 		log.Fatalf("err=%s", err)
 	}
