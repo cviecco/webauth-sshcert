@@ -1,4 +1,4 @@
-package sshAutn
+package sshautn
 
 import (
 	"encoding/base64"
