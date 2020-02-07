@@ -1,4 +1,4 @@
-package sshCertAuth
+package sshcertauth
 
 import (
 	"bytes"
