@@ -85,7 +85,7 @@ func generateNewSSHAuthTestServer(caKeys []string, successBody string, t *testin
 		t.Fatal("Did not worked well")
 	}
 	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("/getChallenge",
+	serveMux.HandleFunc(sshcertauth.DefaultCreateChallengePath,
 		func(w http.ResponseWriter, r *http.Request) {
 			err := sa.CreateChallengeHandler(w, r)
 			if err != nil {
@@ -93,7 +93,7 @@ func generateNewSSHAuthTestServer(caKeys []string, successBody string, t *testin
 			}
 		},
 	)
-	serveMux.HandleFunc("/loginWithChallenge",
+	serveMux.HandleFunc(sshcertauth.DefaultLoginWithChallengePath,
 		func(w http.ResponseWriter, r *http.Request) {
 			_, _, _, err := sa.LoginWithChallenge(r)
 			if err != nil {

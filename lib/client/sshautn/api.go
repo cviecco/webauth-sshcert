@@ -5,6 +5,8 @@ import (
 	"net/url"
 
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/cviecco/webauth-sshcert/lib/server/sshcertauth"
 )
 
 // SSHAuthenticator is the master struct with private fields to handle the authentication
@@ -25,13 +27,11 @@ func NewAuthenticator(baseURL string, client *http.Client) (*SSHAuthenticator, e
 		return nil, err
 	}
 	a := SSHAuthenticator{
-		rawBaseURL: baseURL,
-		baseURL:    parsedBaseURL,
-		client:     client,
-		// TODO: default paths should be defined from server
-		getChallengePath:       "/getChallenge",
-		loginWithChallengePath: "/loginWithChallenge",
-		//pendingChallenges: make(map[string]pendingChallengeData),
+		rawBaseURL:             baseURL,
+		baseURL:                parsedBaseURL,
+		client:                 client,
+		getChallengePath:       sshcertauth.DefaultCreateChallengePath,
+		loginWithChallengePath: sshcertauth.DefaultLoginWithChallengePath,
 	}
 	return &a, nil
 }

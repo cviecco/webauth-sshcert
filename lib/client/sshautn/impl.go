@@ -83,7 +83,7 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 		log.Println(err)
 		return nil, nil, err
 	}
-	s.loggerPrintf(2, "singature(new)=%+v", signature)
+	s.loggerPrintf(2, "signature(new)=%+v", signature)
 
 	//
 	values2 := url.Values{
