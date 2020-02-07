@@ -21,5 +21,5 @@ install: make get-deps
 script:
     - eval "$(ssh-agent -s)" && go test -v -covermode=count -coverprofile=coverage.out ./...
     - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
-    - make test -v
+    - make test
     - make
