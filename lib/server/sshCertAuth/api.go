@@ -14,6 +14,8 @@ type pendingChallengeData struct {
 	Expiration time.Time
 }
 
+// Authenticator contains all the structures to authenticate using
+// we ssh-certs for web.
 type Authenticator struct {
 	hostnames             []string
 	pendingChallenges     map[string]pendingChallengeData
@@ -23,6 +25,8 @@ type Authenticator struct {
 	dontCheckHostname     bool
 }
 
+// ChallengeResponseData is the json struct of the response
+// when requesting a challenge from the Server
 type ChallengeResponseData struct {
 	Challenge                 string   `json:"challenge"`
 	AllowedIssuerFingerprints []string `json:"allowed_issuer_fingerprints,omitempty"`
@@ -34,6 +38,8 @@ func FingerprintSHA256(key ssh.PublicKey) string {
 	return fingerprintSHA256(key)
 }
 
+// NewAuthenticator returns a new Authenticator ready to
+// authenticate usres given the hostnames and caKeys.
 func NewAuthenticator(hostnames []string, caKeys []string) *Authenticator {
 	a := Authenticator{
 		hostnames:         hostnames,
@@ -44,11 +50,16 @@ func NewAuthenticator(hostnames []string, caKeys []string) *Authenticator {
 	return &a
 }
 
+// CreateChallengeHandler is the function that should be handleded to do
+// the server mux in order to create the challenge.
 func (a *Authenticator) CreateChallengeHandler(w http.ResponseWriter, r *http.Request) error {
 	return a.createChallengeHandler(w, r)
 
 }
 
+// LoginWithChallenge should be attached to the loginwith challenge path,
+// it the job of how to keep the session do /do the redirect is dependent on the caller
+// This function returns the authenticated username, expiration time of the authentication
 func (a *Authenticator) LoginWithChallenge(r *http.Request) (string, time.Time, string, error) {
 	return a.loginWithChallenge(r)
 }

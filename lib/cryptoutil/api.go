@@ -23,7 +23,7 @@ func WithAgentGenerateChallengeResponseSignature(clientNonce string,
 		challenge, hostname, agentClient, key)
 }
 
-// WithCertAndPrivateKeyGenerateChallengeResponseSignature
+// WithCertAndPrivateKeyGenerateChallengeResponseSignature generates
 // similar to WithAgentGenerateChallengeResponseSignature but instead
 // of an agent uses an explicit certifiate and keu
 func WithCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
@@ -37,7 +37,9 @@ func WithCertAndPrivateKeyGenerateChallengeResponseSignature(nonce1 string,
 		certificate, privateKey)
 }
 
-// Validates that the signature of a blob is actually signed by the corresponding certificate
+// VerifyChallengeResponseSignature validates that the signature of a blob is
+// actually signed by the corresponding certificate. Does NOT do and checks
+// on the certificate.
 func VerifyChallengeResponseSignature(sshCert *ssh.Certificate,
 	signatureFormat string,
 	signatureBlob []byte, clientNonce,

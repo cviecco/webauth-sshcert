@@ -111,7 +111,7 @@ func getSignerFromPEMBytes(privateKey []byte) (crypto.Signer, error) {
 		case *ecdsa.PrivateKey:
 			return v, nil
 		default:
-			return nil, fmt.Errorf("Type not recognized  %T!\n", v)
+			return nil, fmt.Errorf("Type (%T) not regocnized", v)
 		}
 	default:
 		err := fmt.Errorf("Cannot process that key")
