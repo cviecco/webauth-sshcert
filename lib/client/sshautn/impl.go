@@ -41,7 +41,9 @@ func (s *SSHAuthenticator) getChallengeNonceAndSignerList() (string, string, []s
 		return "", "", nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	//req.Header.Set("User-Agent", userAgentString)
+	if s.UserAgentString != "" {
+		req.Header.Set("User-Agent", s.UserAgentString)
+	}
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", "", nil, err
@@ -100,7 +102,9 @@ func (s *SSHAuthenticator) doChallengerResponseCall(
 		return nil, nil, err
 	}
 	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	//req2.Header.Set("User-Agent", userAgentString)
+	if s.UserAgentString != "" {
+		req2.Header.Set("User-Agent", s.UserAgentString)
+	}
 	resp2, err := s.client.Do(req2)
 	if err != nil {
 		return nil, nil, err

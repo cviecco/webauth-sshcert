@@ -17,6 +17,7 @@ type SSHAuthenticator struct {
 	getChallengePath       string
 	loginWithChallengePath string
 	LogLevel               uint
+	UserAgentString        string
 }
 
 // NewAuthenticator creates a new Authenticator struct for the given client
