@@ -135,7 +135,7 @@ func TestLoginWithKeyringAgent(t *testing.T) {
 			t.Fatal("body does not match")
 		}
 	}
-	// Now we change the timestamp and secure is till fail
+	// Now we change the check timestamp in the far future and ensure it always fails
 	for _, expectedBody := range testBodyStrings {
 		ts := generateNewSSHAuthTestServer([]string{string(ssh.MarshalAuthorizedKey(signerPub))}, expectedBody, t)
 		defer ts.Close()
