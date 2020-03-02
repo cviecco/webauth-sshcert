@@ -135,6 +135,22 @@ func TestLoginWithKeyringAgent(t *testing.T) {
 			t.Fatal("body does not match")
 		}
 	}
+	// Now we change the timestamp and secure is till fail
+	for _, expectedBody := range testBodyStrings {
+		ts := generateNewSSHAuthTestServer([]string{string(ssh.MarshalAuthorizedKey(signerPub))}, expectedBody, t)
+		defer ts.Close()
+
+		client := &http.Client{Timeout: 5 * time.Second}
+
+		a, err := NewAuthenticator(ts.URL, client)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = a.loginWithAgentAtTime(sshAgent, time.Now().Add(time.Hour*24*10))
+		if err == nil {
+			t.Fatal("should have Failed")
+		}
+	}
 }
 
 func TestLoginWithAgentIfRuning(t *testing.T) {

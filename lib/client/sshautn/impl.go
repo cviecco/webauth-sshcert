@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -146,6 +147,10 @@ func (s *SSHAuthenticator) loginWithAgentSocket() ([]byte, http.Header, error) {
 }
 
 func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) ([]byte, http.Header, error) {
+	return s.loginWithAgentAtTime(agentClient, time.Now())
+}
+
+func (s *SSHAuthenticator) loginWithAgentAtTime(agentClient agent.Agent, loginTime time.Time) ([]byte, http.Header, error) {
 	keyList, err := agentClient.List()
 	if err != nil {
 		return nil, nil, err
@@ -156,7 +161,7 @@ func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) ([]byte, http
 		return nil, nil, err
 	}
 
-	var lastErr error
+	lastErr := fmt.Errorf("No suitable Cert Found")
 	for _, key := range keyList {
 		//log.Printf("key=%+v, FORMAT=%s", key, key.Format)
 		pubKey, err := ssh.ParsePublicKey(key.Marshal())
@@ -170,6 +175,12 @@ func (s *SSHAuthenticator) loginWithAgent(agentClient agent.Agent) ([]byte, http
 			continue
 		}
 		s.loggerPrintf(2, "cert=%s", key.String())
+		keyFP := sshcertauth.FingerprintSHA256(sshCert.Key)
+		// TODO: add a check if the current time is < unix epoch
+		if sshCert.ValidBefore < uint64(loginTime.Unix()) {
+			s.loggerPrintf(1, "SSH Cert (keyFP=%s) is not valid anymore, skipping", keyFP)
+			continue
+		}
 		issuerFP := sshcertauth.FingerprintSHA256(sshCert.SignatureKey)
 		knownIssuer := false
 		for _, potentialSignerFP := range issuerFingerprints {
