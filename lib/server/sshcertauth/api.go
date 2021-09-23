@@ -42,6 +42,10 @@ const DefaultCreateChallengePath = "/webauth-sshcert/v1/getChallenge"
 // is suggested to be used by consumers of this library
 const DefaultLoginWithChallengePath = "/webauth-sshcert/v1/loginWithChallenge"
 
+// ExpirationChallengeMaxAge is the maximum time for a challenge to be
+// considered valid.
+const ExpirationChallengeMaxAge = time.Second * 30
+
 // FingerprintSHA256 returns the base64 encoding of the sha256 hash
 // with the trailing equal sign removed
 func FingerprintSHA256(key ssh.PublicKey) string {
@@ -57,6 +61,7 @@ func NewAuthenticator(hostnames []string, caKeys []string) *Authenticator {
 		pendingChallenges: make(map[string]pendingChallengeData),
 	}
 	a.computeCAFingeprints()
+	go a.cleanUpExpiredChallengesLoop()
 	return &a
 }
 
