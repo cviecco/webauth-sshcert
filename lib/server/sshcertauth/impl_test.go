@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -435,6 +436,42 @@ func TestCreateChallengeHandlerAndLogin(t *testing.T) {
 	}
 	if authUser != "someuser" {
 		t.Fatal("mismatch user auth")
+	}
+
+}
+
+func TestCleanUpExpiredChallengesAtTime(t *testing.T) {
+	_, _, signerPub, err := getTestCertSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := NewAuthenticator([]string{"localhost"}, []string{string(signerPub)})
+	if a == nil {
+		t.Fatal("Did not worked well")
+	}
+	now := time.Now()
+	a.pendingChallengeMutex.Lock()
+	seconds := []int{30, 60, 120}
+	for index, sec := range seconds {
+		toStore := pendingChallengeData{
+			//Nonce1:     encodedNonce1,
+			Expiration: now.Add(time.Second * time.Duration(sec)),
+		}
+		a.pendingChallenges[strconv.FormatInt(int64(index), 10)] = toStore
+	}
+	a.pendingChallengeMutex.Unlock()
+
+	expectedLengths := []int{3, 3, 2, 1, 1, 1, 0}
+	a.cleanUpExpiredChallengesAtTime(now)
+	for i, expectedLen := range expectedLengths {
+		a.cleanUpExpiredChallengesAtTime(now.Add(time.Second * time.Duration(i*20+1)))
+		a.pendingChallengeMutex.Lock()
+		pendingLen := len(a.pendingChallenges)
+		a.pendingChallengeMutex.Unlock()
+		if pendingLen != expectedLen {
+			errstr := fmt.Sprintf("unexpected len=%d i=%d, expected=%d", pendingLen, i, expectedLen)
+			t.Fatalf(errstr)
+		}
 	}
 
 }
