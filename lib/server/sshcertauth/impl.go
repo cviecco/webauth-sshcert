@@ -124,7 +124,7 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	}
 	toStore := pendingChallengeData{
 		Nonce1:     encodedNonce1,
-		Expiration: time.Now().Add(time.Second * 3600),
+		Expiration: time.Now().Add(ExpirationChallengeMaxAge),
 		//Cert:   sshCert,
 	}
 	a.pendingChallengeMutex.Lock()
