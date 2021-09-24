@@ -124,7 +124,7 @@ func (a *Authenticator) createChallengeHandler(w http.ResponseWriter, r *http.Re
 	}
 	toStore := pendingChallengeData{
 		Nonce1:     encodedNonce1,
-		Expiration: time.Now().Add(ExpirationChallengeMaxAge),
+		Expiration: time.Now().Add(time.Second * 3600),
 		//Cert:   sshCert,
 	}
 	a.pendingChallengeMutex.Lock()
@@ -152,7 +152,7 @@ func (a *Authenticator) cleanUpExpiredChallengesAtTime(now time.Time) {
 	a.pendingChallengeMutex.Lock()
 	defer a.pendingChallengeMutex.Unlock()
 	for key, challengeData := range a.pendingChallenges {
-		if challengeData.Expiration.After(now) {
+		if challengeData.Expiration.Before(now) {
 			delete(a.pendingChallenges, key)
 		}
 	}
@@ -161,7 +161,7 @@ func (a *Authenticator) cleanUpExpiredChallengesAtTime(now time.Time) {
 func (a *Authenticator) cleanUpExpiredChallengesLoop() {
 	for {
 		a.cleanUpExpiredChallengesAtTime(time.Now())
-		sleep(time.Second * 5)
+		time.Sleep(time.Second * 5)
 	}
 }
 
@@ -235,12 +235,12 @@ func (a *Authenticator) loginWithChallenge(r *http.Request) (string, time.Time, 
 		return "", time.Time{}, "Challenge not found/invalid", fmt.Errorf("Challenge Not Found")
 	}
 
-	if challengeData.Expiration.After(time.Now()) {
+	if challengeData.Expiration.Before(time.Now()) {
 		log.Printf("Expired Challenge")
 		a.pendingChallengeMutex.Lock()
 		delete(a.pendingChallenges, encodedNonce2)
 		a.pendingChallengeMutex.Unlock()
-		return "", time.Time{}, "Challenge expired", fmt.Errorf("Expired Challenge Found")
+		return "", time.Time{}, "Challenge expired", fmt.Errorf("Expired Challenge expiration=%s, now=%s", challengeData.Expiration, time.Now())
 	}
 	err = cryptoutil.VerifyChallengeResponseSignature(sshCert,
 		signatureFormat, signatureBlob,
