@@ -1,5 +1,5 @@
 # webauth ssh-cert
-[![Build Status](https://travis-ci.org/cviecco/webauth-sshcert.svg?branch=master)](https://travis-ci.org/cviecco/webauth-sshcert)
+[![Build Status](https://github.com/cviecco/webauth-sshcert/actions/workflows/test.yml/badge.svg?query=branch%3Amaster)](https://github.com/cviecco/webauth-sshcert/actions/workflows/test.yml?query=branch%3Amaster)
 
 Demo/Design for webauth using  for ssh certs using the ssh agent.
 
