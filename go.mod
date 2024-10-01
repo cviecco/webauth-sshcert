@@ -1,6 +1,6 @@
 module github.com/cviecco/webauth-sshcert
 
-go 1.23.0
+go 1.22.0
 
 require (
 	github.com/Cloud-Foundations/npipe v0.0.0-20191222161149-761e85df1f92
