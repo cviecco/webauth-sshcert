@@ -4,6 +4,9 @@ import (
 	//"bytes"
 	//"bufio"
 	"crypto/rand"
+	"os"
+	"strings"
+
 	//"crypto/sha256"
 	//"crypto/tls"
 	"encoding/base64"
@@ -12,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+
 	//"net"
 	"net/http"
 	"sync"
@@ -31,16 +35,18 @@ type Server struct {
 	authenticator *sshcertauth.Authenticator
 	authCookie    map[string]authCookieStruct
 	cookieMutex   sync.Mutex
+	HttpMux       *http.ServeMux
 }
 
 var (
-	listenAddr = flag.String("addr", "127.0.0.1:4443", "listening Address")
+	listenAddr             = flag.String("addr", "127.0.0.1:4443", "listening Address")
+	trustedIssuersFilename = flag.String("trustedIssuers", "", "name of trustedIssuers")
 )
 
 const authCookieName = "demo-auth-cookie"
 const cookieExpirationHours = 1
 
-const exampleSigner = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD6+x+wPjuKWM7A8aCZgGdiFXRZdpLRZk+KpvNBe9nXu9GHznWYrPIXWVCLl+yp6v30ldzRUiCzHnskV0R4Wzjxi2LCKlVIwpx2Z7gVk8XnZf/MAHdvklfHB2srpWsGUQNJhxCVeOFweJxhLSILkh6y+V0yZ8Zy3t2ALCrHAyOEYhz/RgHgmWMYvxzoSj5wnS16tY3Adt3sOu3DMRq45dIsKjN0bjSPjycL6TQGWvE9BK8HsioyEVCNItWbh4+4kfr4L32U6Sw9syvK4P29kvHnPbSoLssCKuWvtKaLjI9qKFj+sL3hlsZCU5kvHEPVWDudExW2wA8hm6S2wpIOqI/Ua/24Dhm7MKimeqXiOoO0wzPeh7IaKQfczy68Hmk2S8oubj8wIwjxZICbhL/cxl7ZD1EWY/LZH+g5bf98gvl0mC3gFWEVyA4ZZwNkzIlV1NZXibXkdsquJg24/+ZMMtMat/kqd8di9lzuoVRAOV9q80v7QFi25jHjKgXTJ7Av7mc="
+const trustedSigner = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD6+x+wPjuKWM7A8aCZgGdiFXRZdpLRZk+KpvNBe9nXu9GHznWYrPIXWVCLl+yp6v30ldzRUiCzHnskV0R4Wzjxi2LCKlVIwpx2Z7gVk8XnZf/MAHdvklfHB2srpWsGUQNJhxCVeOFweJxhLSILkh6y+V0yZ8Zy3t2ALCrHAyOEYhz/RgHgmWMYvxzoSj5wnS16tY3Adt3sOu3DMRq45dIsKjN0bjSPjycL6TQGWvE9BK8HsioyEVCNItWbh4+4kfr4L32U6Sw9syvK4P29kvHnPbSoLssCKuWvtKaLjI9qKFj+sL3hlsZCU5kvHEPVWDudExW2wA8hm6S2wpIOqI/Ua/24Dhm7MKimeqXiOoO0wzPeh7IaKQfczy68Hmk2S8oubj8wIwjxZICbhL/cxl7ZD1EWY/LZH+g5bf98gvl0mC3gFWEVyA4ZZwNkzIlV1NZXibXkdsquJg24/+ZMMtMat/kqd8di9lzuoVRAOV9q80v7QFi25jHjKgXTJ7Av7mc="
 
 func randomStringGeneration() (string, error) {
 	const size = 32
@@ -143,19 +149,35 @@ func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Reques
 	log.Printf("Success auth %s", authUser)
 }
 
+func newServer(allowedHostnames []string, trustedSSHCA []string) *Server {
+	server := Server{
+		authenticator: sshcertauth.NewAuthenticator([]string{"localhost"}, []string{trustedSigner}),
+		authCookie:    make(map[string]authCookieStruct),
+		HttpMux:       http.NewServeMux(),
+	}
+	server.HttpMux.HandleFunc("/echoIdentity", server.echoIdentityHandler)
+	server.HttpMux.HandleFunc(sshcertauth.DefaultCreateChallengePath, server.CreateChallengeHandler)
+	server.HttpMux.HandleFunc(sshcertauth.DefaultLoginWithChallengePath, server.LoginWithChallengeHandler)
+	return &server
+}
+
 func main() {
 	flag.Parse()
 	log.SetFlags(log.Lshortfile)
 
-	server := Server{
-		authenticator: sshcertauth.NewAuthenticator([]string{"localhost"}, []string{exampleSigner}),
-		authCookie:    make(map[string]authCookieStruct),
+	var trustedSigners []string
+	if (*trustedIssuersFilename) != "" {
+		content, err := os.ReadFile(*trustedIssuersFilename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		trustedSigners = strings.Split(string(content), "\n")
+	} else {
+		trustedSigners = append(trustedSigners, trustedSigner)
 	}
 
-	http.HandleFunc("/echoIdentity", server.echoIdentityHandler)
-	http.HandleFunc(sshcertauth.DefaultCreateChallengePath, server.CreateChallengeHandler)
-	http.HandleFunc(sshcertauth.DefaultLoginWithChallengePath, server.LoginWithChallengeHandler)
-	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", nil)
+	server := newServer([]string{"localhost"}, trustedSigners)
+	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", server.HttpMux)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
