@@ -151,7 +151,7 @@ func (s *Server) LoginWithChallengeHandler(w http.ResponseWriter, r *http.Reques
 
 func newServer(allowedHostnames []string, trustedSSHCA []string) *Server {
 	server := Server{
-		authenticator: sshcertauth.NewAuthenticator([]string{"localhost"}, []string{trustedSigner}),
+		authenticator: sshcertauth.NewAuthenticator(allowedHostnames, trustedSSHCA),
 		authCookie:    make(map[string]authCookieStruct),
 		HttpMux:       http.NewServeMux(),
 	}
@@ -175,6 +175,7 @@ func main() {
 	} else {
 		trustedSigners = append(trustedSigners, trustedSigner)
 	}
+	//log.Printf("trustedSigners=%+v", trustedSigners)
 
 	server := newServer([]string{"localhost"}, trustedSigners)
 	err := http.ListenAndServeTLS(*listenAddr, "server.crt", "server.key", server.HttpMux)
