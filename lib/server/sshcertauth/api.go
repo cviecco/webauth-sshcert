@@ -78,3 +78,12 @@ func (a *Authenticator) CreateChallengeHandler(w http.ResponseWriter, r *http.Re
 func (a *Authenticator) LoginWithChallenge(r *http.Request) (string, time.Time, string, error) {
 	return a.loginWithChallenge(r)
 }
+
+// UnsafeUpdateCaKeys is a function to be used only in the special case where the
+// server does not know all the trusted keys at server initialization time
+// As the name indicates, you should not call this unless you have areally good reason.
+// This function is NOT safe to be called from multiple goroutines or after the first call
+// any handler provided by this package.
+func (a *Authenticator) UnsafeUpdateCaKeys(caKeys []string) error {
+	return a.unsafeUpdateCaKeys(caKeys)
+}
