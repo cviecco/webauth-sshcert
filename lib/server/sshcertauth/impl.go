@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	//"io"
 	"log"
 	//"net"
@@ -53,6 +54,11 @@ func (a *Authenticator) computeCAFingeprints() error {
 		a.caFingerPrints[i] = FingerprintSHA256(sshCaPub)
 	}
 	return nil
+}
+
+func (a *Authenticator) unsafeUpdateCaKeys(caKeys []string) error {
+	a.caKeys = caKeys
+	return a.computeCAFingeprints()
 }
 
 func (a *Authenticator) validateSSHCertString(encodedSSHCert string) (*ssh.Certificate, string, error) {
