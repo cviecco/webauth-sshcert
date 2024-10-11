@@ -183,6 +183,12 @@ func TestUnsafeUpdateCaKeys(t *testing.T) {
 	if len(authenticator.caKeys) != 1 {
 		t.Fatalf("there should be only one key")
 	}
+
+	//shour error with invalid value
+	err = authenticator.UnsafeUpdateCaKeys([]string{"thisisnokey"})
+	if err == nil {
+		t.Fatal("shot have failed to update with bad key")
+	}
 }
 
 func TestIsUserAuthority(t *testing.T) {
@@ -490,5 +496,48 @@ func TestCleanUpExpiredChallengesAtTime(t *testing.T) {
 			t.Fatalf(errstr)
 		}
 	}
+}
 
+func TestCreateChallengeHandlerBadParams(t *testing.T) {
+	_, _, signerPub, err := getTestCertSigner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := NewAuthenticator([]string{"localhost"}, []string{string(signerPub)})
+	if a == nil {
+		t.Fatal("Did not worked well")
+	}
+	nonce, err := cryptoutil.GenRandomString()
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := url.Values{}
+	v.Set("nonce1", nonce)
+	// Test Bad Method
+	targetURL := "/someURL" //TODO need to make this a const
+	req, err := http.NewRequest("FOOO", targetURL, bytes.NewBufferString(v.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	//t.Logf("req=%+v", req)
+	w := httptest.NewRecorder()
+	err = a.CreateChallengeHandler(w, req)
+	if err == nil {
+		t.Fatal("should have failed")
+	}
+
+	// no nonce
+	v2 := url.Values{}
+	req2, err := http.NewRequest("FOOO", targetURL, bytes.NewBufferString(v2.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
+	//t.Logf("req=%+v", req)
+	w2 := httptest.NewRecorder()
+	err = a.CreateChallengeHandler(w2, req2)
+	if err == nil {
+		t.Fatal("should have failed")
+	}
 }
