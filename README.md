@@ -1,5 +1,6 @@
 # webauth ssh-cert
 [![Build Status](https://github.com/cviecco/webauth-sshcert/actions/workflows/test.yml/badge.svg?query=branch%3Amaster)](https://github.com/cviecco/webauth-sshcert/actions/workflows/test.yml?query=branch%3Amaster)
+[![codecov](https://codecov.io/gh/cviecco/webauth-sshcert/graph/badge.svg?token=Q8MW05ZOFm)](https://codecov.io/gh/cviecco/webauth-sshcert)
 
 Demo/Design for webauth using  for ssh certs using the ssh agent.
 
